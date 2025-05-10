@@ -1,0 +1,43 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<h2>Редактировать информацию</h2>
+<form method="post" action="/admin/info">
+    <label>Имя:</label><br>
+    <input name="name" value="{{ info.get('name', '') }}"><br>
+
+    <label>Позиция:</label><br>
+    <input name="position" value="{{ info.get('position', '') }}"><br>
+
+    <h3>Контакты</h3>
+
+<label>Email:</label><br>
+<input name="email" value="{{ info.get('email', '') }}"><br>
+
+<label>Телефон:</label><br>
+<input name="phone" value="{{ info.get('phone', '') }}"><br>
+<label><input type="checkbox" name="hide_phone" {% if info.get('hide_phone') == '1' %}checked{% endif %}> Не показывать телефон</label><br><br>
+
+<label>Telegram:</label><br>
+<input name="telegram" value="{{ info.get('telegram', '') }}"><br>
+
+<label>GitHub:</label><br>
+<input name="github" value="{{ info.get('github', '') }}"><br>
+
+<label>LinkedIn:</label><br>
+<input name="linkedin" value="{{ info.get('linkedin', '') }}"><br>
+
+<label>WhatsApp:</label><br>
+<input name="whatsapp" value="{{ info.get('whatsapp', '') }}"><br>
+
+<label>ВКонтакте:</label><br>
+<input name="vkontakte" value="{{ info.get('vkontakte', '') }}"><br>
+
+<label>Ссылка (другая):</label><br>
+<input name="custom_link" value="{{ info.get('custom_link', '') }}"><br>
+
+
+    <label>Обо мне:</label><br>
+    <textarea name="about" rows="4">{{ info.get('about', '') }}</textarea><br>
+    <input type="submit" value="Сохранить">
+</form>
+{% endblock %}

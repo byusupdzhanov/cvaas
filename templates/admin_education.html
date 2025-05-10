@@ -1,0 +1,38 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<h2>Образование</h2>
+
+<form action="/admin/education/add" method="post">
+    <label>Вид образования:</label><br>
+    <select name="degree">
+        <option>Высшее</option>
+        <option>Неоконченное высшее</option>
+        <option>Среднее профессиональное</option>
+        <option>Среднее</option>
+    </select><br>
+
+    <label>Учреждение:</label><br>
+    <input name="institution"><br>
+
+    <label>Дата начала:</label><br>
+    <input type="month" name="start"><br>
+
+    <label>Дата окончания:</label><br>
+    <input type="month" name="end"><br>
+
+    <label>Специальность:</label><br>
+    <input name="specialization"><br>
+
+    <input type="submit" value="Добавить">
+</form>
+
+<ul>
+    {% for edu in educations %}
+    <li>
+        {{ edu.degree }} — {{ edu.institution }} ({{ edu.start_date }} – {{ edu.end_date }})<br>
+        {{ edu.specialization }} —
+        <a href="/admin/education/delete/{{ edu.id }}">Удалить</a>
+    </li>
+    {% endfor %}
+</ul>
+{% endblock %}

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="/static/style.css?v=1">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="icon" href="/static/uploads/logo.png" type="image/png">
+    <title>{{ title or "Админка" }}</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #f0f4f8;
+            color: #333;
+            padding: 2rem;
+        }
+        h1, h2 {
+            color: #1a202c;
+        }
+        a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        input, textarea {
+            padding: 0.4rem;
+            margin-bottom: 1rem;
+            width: 100%;
+            max-width: 400px;
+        }
+        form {
+            margin-bottom: 2rem;
+        }
+        .nav {
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="admin-navbar">
+        <div class="admin-navbar-left">
+            <img src="/static/uploads/logo.png" alt="CVaaS" style="height: 28px; vertical-align: middle; margin-right: 8px;">
+            <strong style="font-size: 18px;">CVaaS </strong><span class="text-sm font-light text-gray-500 align-middle">| Admin</span>
+        </div>
+        
+        <div class="admin-navbar-links">
+            <a href="/admin/dashboard">Главная</a>
+            <a href="/admin/info">Инфо</a>
+            <a href="/admin/add">Опыт</a>
+            <a href="/admin/education">Образование</a>
+            <a href="/admin/courses">Курсы</a>
+            <a href="/admin/skills">Навыки</a>
+            <a href="/admin/languages">Языки</a>
+            <a href="/admin/projects">Проекты</a>
+            <a href="/admin/certificates">Сертификаты</a>
+            <a href="/admin/recommendations">Рекомендации</a>
+            <a href="/admin/settings"><i class="fas fa-cog"></i> Настройки</a>
+        </div>
+    
+        <div class="admin-navbar-actions">
+            <form action="/admin/reset" method="post" onsubmit="return confirm('Вы действительно хотите обнулить резюме?')">
+                <button type="submit" class="btn-danger">
+                  <i class="fas fa-broom"></i> Обнулить
+                </button>
+            </form>
+              <a href="/logout" class="btn-logout">
+                <i class="fas fa-sign-out-alt"></i> Выйти
+              </a>
+        </div>
+    </nav>
+    <!-- 
+    <div class="nav">
+        <a href="/admin/dashboard">🏠 Главная</a> |
+        <a href="/admin/info">Инфо</a> |
+        <a href="/admin/skills">Навыки</a> |
+        <a href="/admin/courses">Курсы</a> |
+        <a href="/admin/add">Опыт</a> |
+        <a href="/admin/projects">💼 Проекты</a> |
+        <a href="/admin/education">🎓 Образование</a> |
+        <a href="/admin/certificates">📜 Сертификаты</a> |
+        <a href="/admin/photo">🖼 Фото</a> |
+        <a href="/admin/recommendations">🗣 Рекомендации</a> |
+        <a href="/admin/languages">🌐 Языки</a> |
+        <a href="/logout">🚪 Выйти</a>
+    </div>
+    <form action="/admin/reset" method="post" onsubmit="return confirm('⚠️ Вы действительно хотите полностью очистить резюме? Это действие необратимо.')">
+        <button type="submit" class="reset-btn">🧨 Обнулить резюме</button>
+    </form>
+    <a href="/admin/export-json" class="export-btn">📤 Экспорт в JSON</a>
+-->
+    <div class="admin-container">
+    {% block content %}{% endblock %}
+    </div>
+    <div class="admin-preview">
+        <h2>🔍 Превью резюме</h2>
+        <iframe src="/" width="100%" height="700" style="border:1px solid #ccc; border-radius: 6px;"></iframe>
+    </div>
+</body>
+</html>

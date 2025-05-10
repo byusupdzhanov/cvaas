@@ -1,0 +1,20 @@
+{% extends "admin_base.html" %}
+{% block content %}
+
+<h2>Управление навыками</h2>
+
+{% if last_updated %}
+<p class="text-sm text-gray-500 mb-4">Последнее обновление: {{ last_updated.strftime('%d.%m.%Y %H:%M') }}</p>
+{% endif %}
+
+<form method="post" action="/admin/skills/add">
+    <input name="name" placeholder="Введите навык">
+    <input type="submit" value="Добавить">
+</form>
+
+<ul>
+    {% for skill in skills %}
+    <li>{{ skill.name }} — <a href="/admin/skills/delete/{{ skill.id }}">Удалить</a></li>
+    {% endfor %}
+</ul>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<h2>Опыт работы</h2>
+<a href="/admin/add">➕ Добавить опыт</a>
+<ul>
+    {% for job in experiences %}
+    <li>
+        <strong>{{ job.company }}</strong> — {{ job.role }} ({{ job.period }})<br>
+        <a href="/admin/edit/{{ job.id }}">✏️ Редактировать</a> |
+        <a href="/admin/delete/{{ job.id }}">🗑 Удалить</a>
+    </li>
+    {% endfor %}
+</ul>
+{% endblock %}

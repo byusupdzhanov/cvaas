@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.so
+*.egg-info/
+.env
+.env.*
+app/__pycache__
+
+# Virtualenv / venv
+venv/
+.venv/
+
+# SQLite
+resume.db
+*.sqlite3
+*.db-journal
+
+# VSCode / PyCharm
+.vscode/
+.idea/
+
+# Mac / system
+.DS_Store
+Thumbs.db
+
+# Static uploads
+static/uploads/
+
+# Logs
+*.log
+
+# Exported resumes
+resume_*.json
+*.bak.json
+
+# Alembic cache
+alembic/__pycache__/
+alembic/versions/__pycache__/

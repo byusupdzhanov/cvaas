@@ -1,0 +1,17 @@
+version: '3.9'
+
+services:
+  cvaas:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cvaas
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./resume.db:/app/resume.db        
+      - ./static/uploads:/app/static/uploads 
+    environment:
+      - CVAAS_ADMIN_USER=admin
+      - CVAAS_ADMIN_PASSWORD=allthingsareperfect
+    restart: unless-stopped

@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    {% if not preview %}
+    <div class="resume-toolbar">
+        <div class="dropdown">
+          <button class="dropbtn">💾 Сохранить ▾</button>
+          <div class="dropdown-content">
+            <a href="#" onclick="window.print()">📄 Как PDF</a>
+            <a href="#" onclick="window.print()">🖨️ Распечатать</a>
+          </div>
+        </div>
+    </div>
+    {% endif %}
+    {% if last_updated %}
+        <p class="resume-updated">📄 Резюме обновлено: {{ last_updated.strftime('%-d %B %Y') }}</p>
+    {% endif %}
+<div class="header">
+    {% if photo %}
+        <img src="/static/uploads/photo.jpg?{{ last_updated.timestamp() if last_updated else '' }}" alt="Фото">
+    {% endif %}
+    <div class="title">
+        <h1>{{ info.get("name") }}</h1>
+        <p>{{ info.get("position") }}</p>
+        <p>
+            <a href="mailto:{{ info.get('email') }}">{{ info.get("email") }}</a>
+            {% if info.get("hide_phone") != "1" and info.get("phone") %} | {{ info.get("phone") }}{% endif %}
+        </p>
+    </div>
+</div>
+
+    <h2 class="text-xl font-semibold mt-6 mb-2">Контакты</h2>
+<ul class="space-y-1 text-gray-700">
+    <li><i class="fas fa-envelope text-blue-600"></i> <a href="mailto:{{ info.get('email') }}">{{ info.get('email') }}</a></li>
+
+    {% if info.get("hide_phone") != "1" and info.get("phone") %}
+    <li><i class="fas fa-phone text-green-600"></i> {{ info.get("phone") }}</li>
+    {% endif %}
+
+    {% if info.get("telegram") %}
+    <li><i class="fab fa-telegram text-sky-500"></i> <a href="{{ info.get('telegram') }}">{{ info.get('telegram') }}</a></li>
+    {% endif %}
+
+    {% if info.get("github") %}
+    <li><i class="fab fa-github text-black"></i> <a href="{{ info.get('github') }}" target="_blank">GitHub</a></li>
+    {% endif %}
+
+    {% if info.get("linkedin") %}
+    <li><i class="fab fa-linkedin text-blue-700"></i> <a href="{{ info.get('linkedin') }}" target="_blank">LinkedIn</a></li>
+    {% endif %}
+
+    {% if info.get("whatsapp") %}
+    <li><i class="fab fa-whatsapp text-green-500"></i> <a href="{{ info.get('whatsapp') }}" target="_blank">WhatsApp</a></li>
+    {% endif %}
+
+    {% if info.get("vkontakte") %}
+    <li><i class="fab fa-vk text-blue-500"></i> <a href="{{ info.get('vkontakte') }}" target="_blank">ВКонтакте</a></li>
+    {% endif %}
+
+    {% if info.get("custom_link") %}
+    <li><i class="fas fa-link text-gray-500"></i> <a href="{{ info.get('custom_link') }}" target="_blank">{{ info.get("custom_link") }}</a></li>
+    {% endif %}
+</ul>
+
+
+    <h2 class="text-xl font-semibold mt-6 mb-2">Опыт работы</h2>
+{% for job in experience %}
+    <div class="mb-4">
+        <strong>{{ job.company }} ({{ job.period }})</strong><br>
+        {{ job.role }}<br>
+        <p>{{ job.description }}</p>
+    </div>
+{% endfor %}
+
+<h2 class="text-xl font-semibold mt-6 mb-2">Образование</h2>
+<ul>
+    {% for edu in educations %}
+    <li>
+        <strong>{{ edu.degree }}</strong> — {{ edu.institution }}<br>
+        {{ edu.specialization }} ({{ edu.start_date }} — {{ edu.end_date }})
+    </li>
+    {% endfor %}
+</ul>
+
+<h2 class="text-xl font-semibold mt-6 mb-2">Курсы и повышение квалификации</h2>
+<ul>
+    {% for course in courses %}
+    <li><strong>{{ course.title }}</strong> — {{ course.organization }} ({{ course.year }})</li>
+    {% endfor %}
+</ul>
+
+{% if certificates %}
+<h2 class="text-xl font-semibold mt-6 mb-2">Сертификаты</h2>
+<ul class="space-y-2">
+    {% for c in certificates %}
+    <li>
+        <strong>{{ c.title }}</strong> — {{ c.issuer }}, {{ c.year }}
+        {% if c.link %}
+            — <a href="{{ c.link }}" target="_blank">Ссылка</a>
+        {% elif c.file_path %}
+            — <a href="{{ c.file_path }}" target="_blank">Скачать</a>
+        {% endif %}
+    </li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+<h2 class="text-xl font-semibold mt-6 mb-2">Навыки</h2>
+<div class="flex flex-wrap gap-2 text-sm">
+    {% for s in skills %}
+        <span class="tag">{{ s.name }}</span>
+    {% endfor %}
+</div>
+
+
+{% if projects %}
+<h2 class="text-xl font-semibold mt-6 mb-2">Проекты</h2>
+<ul>
+    {% for project in projects %}
+    <li>
+        <strong>{{ project.title }}</strong>{% if project.link %} — <a href="{{ project.link }}" target="_blank">ссылка</a>{% endif %}<br>
+        {{ project.description }}<br>
+        <em>{{ project.stack }}</em>
+    </li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+{% if recommendations %}
+<h2 class="text-xl font-semibold mt-6 mb-2">Рекомендации</h2>
+<ul class="space-y-2">
+    {% for r in recommendations %}
+    <li>
+        <blockquote class="italic text-gray-600">"{{ r.quote }}"</blockquote>
+        <div class="text-sm text-gray-500">— {{ r.name }}, {{ r.company }}</div>
+    </li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+
+<h2 class="text-xl font-semibold mt-6 mb-2">Языки</h2>
+<ul>
+    {% for lang in languages %}
+    <li>{{ lang.name }} — {{ lang.level }}</li>
+    {% endfor %}
+</ul>
+
+
+<h2 class="text-xl font-semibold mt-6 mb-2">Обо мне</h2>
+<p>{{ info.get("about") }}</p>
+
+<div class="footer-print">
+    <hr style="margin-top: 40px;">
+    <p style="font-size: 12px; color: #555;">Создано через CVaaS v 0.0.1 — cvaas.projects.byusupdzhanov.ru</p>
+</div>
+
+</div>
+{% endblock %}
+

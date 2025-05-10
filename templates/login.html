@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Вход</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #f0f4f8;
+            padding: 2rem;
+        }
+        form {
+            background: white;
+            padding: 2rem;
+            border-radius: 6px;
+            max-width: 400px;
+            margin: auto;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        input {
+            display: block;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            width: 100%;
+        }
+        a {
+            color: #2563eb;
+            font-size: 0.9rem;
+        }
+        .error {
+            color: #dc2626;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <form method="post" action="/login">
+        <h2>Вход в админку</h2>
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
+        <input name="username" placeholder="Логин">
+        <input type="password" name="password" placeholder="Пароль">
+        <input type="submit" value="Войти">
+        <a href="/recover">Забыли пароль?</a>
+    </form>
+</body>
+</html>

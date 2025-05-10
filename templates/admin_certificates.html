@@ -1,0 +1,37 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<h2>Сертификаты</h2>
+
+<form action="/admin/certificates/add" method="post" enctype="multipart/form-data">
+    <label>Название:</label><br>
+    <input name="title"><br>
+
+    <label>Организация:</label><br>
+    <input name="issuer"><br>
+
+    <label>Год:</label><br>
+    <input name="year" type="number"><br>
+
+    <label>Ссылка (если есть):</label><br>
+    <input name="link"><br>
+
+    <label>Файл (PDF, если нет ссылки):</label><br>
+    <input type="file" name="file" accept="application/pdf"><br><br>
+
+    <input type="submit" value="Добавить">
+</form>
+
+<ul>
+    {% for c in certificates %}
+    <li>
+        {{ c.title }} — {{ c.issuer }}, {{ c.year }}
+        {% if c.link %}
+            — <a href="{{ c.link }}" target="_blank">Ссылка</a>
+        {% elif c.file_path %}
+            — <a href="{{ c.file_path }}" target="_blank">Скачать</a>
+        {% endif %}
+        <a href="/admin/certificates/delete/{{ c.id }}">Удалить</a>
+    </li>
+    {% endfor %}
+</ul>
+{% endblock %}

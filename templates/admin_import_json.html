@@ -1,0 +1,18 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<h2>📥 Импорт резюме из JSON</h2>
+<p>Вы можете импортировать файл, полученный через экспорт. Поддерживаются все основные блоки (опыт, курсы, навыки и т.д.).</p>
+
+<form action="/admin/import-json" method="post" enctype="multipart/form-data" class="mt-4">
+    <input type="file" name="json_file" accept=".json" required>
+    <button type="submit" class="btn-secondary">
+        <i class="fas fa-file-import"></i> Импортировать
+    </button>
+</form>
+
+{% if json_success %}
+  <p class="mt-4 text-green-600">✅ {{ json_success }}</p>
+{% elif json_error %}
+  <p class="mt-4 text-red-600">❌ {{ json_error }}</p>
+{% endif %}
+{% endblock %}

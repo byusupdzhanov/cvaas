@@ -1,0 +1,14 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<h2>Загрузка фотографии</h2>
+
+{% if "photo.jpg" in files %}
+    <p>Текущее фото:</p>
+    <img src="/static/uploads/photo.jpg" width="150"><br><br>
+{% endif %}
+
+<form action="/admin/photo" method="post" enctype="multipart/form-data">
+    <input type="file" name="file" accept="image/*" required>
+    <input type="submit" value="Загрузить">
+</form>
+{% endblock %}

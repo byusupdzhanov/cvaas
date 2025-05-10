@@ -1,0 +1,24 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<h2>Языки</h2>
+
+<form action="/admin/languages/add" method="post">
+    <label>Название языка:</label><br>
+    <input name="name"><br>
+
+    <label>Уровень:</label><br>
+    <select name="level">
+        {% for lvl in levels %}
+            <option value="{{ lvl }}">{{ lvl }}</option>
+        {% endfor %}
+    </select><br>
+
+    <input type="submit" value="Добавить">
+</form>
+
+<ul>
+    {% for lang in languages %}
+    <li>{{ lang.name }} — {{ lang.level }} <a href="/admin/languages/delete/{{ lang.id }}">Удалить</a></li>
+    {% endfor %}
+</ul>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<h2>Рекомендации</h2>
+
+<form action="/admin/recommendations/add" method="post">
+    <label>Имя:</label><br>
+    <input name="name"><br>
+
+    <label>Компания / должность:</label><br>
+    <input name="company"><br>
+
+    <label>Цитата:</label><br>
+    <textarea name="quote" rows="3"></textarea><br>
+
+    <input type="submit" value="Добавить">
+</form>
+
+<ul>
+    {% for r in recommendations %}
+    <li>
+        <blockquote>"{{ r.quote }}"</blockquote>
+        — {{ r.name }}, {{ r.company }}
+        <a href="/admin/recommendations/delete/{{ r.id }}">Удалить</a>
+    </li>
+    {% endfor %}
+</ul>
+{% endblock %}

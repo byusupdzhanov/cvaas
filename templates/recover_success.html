@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="login-container text-center">
+    <h2 class="text-2xl font-semibold mb-4">✅ Доступ восстановлен</h2>
+    <p class="mb-4 text-gray-700">Используйте данные ниже для входа:</p>
+    <div class="bg-gray-100 px-4 py-3 rounded mb-4">
+        <strong>Логин:</strong> {{ username }}<br>
+        <strong>Пароль:</strong> {{ password }}
+    </div>
+    <a href="/login" class="bg-blue-600 text-white px-4 py-2 rounded">Перейти к входу</a>
+</div>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<h2>Проекты</h2>
+
+<form action="/admin/projects/add" method="post">
+    <label>Название:</label><br>
+    <input name="title"><br>
+
+    <label>Описание:</label><br>
+    <textarea name="description" rows="3"></textarea><br>
+
+    <label>Ссылка (необязательно):</label><br>
+    <input name="link"><br>
+
+    <label>Стек технологий:</label><br>
+    <input name="stack"><br>
+
+    <input type="submit" value="Добавить">
+</form>
+
+<ul>
+    {% for p in projects %}
+    <li>
+        <strong>{{ p.title }}</strong>
+        {% if p.link %} — <a href="{{ p.link }}" target="_blank">ссылка</a>{% endif %}<br>
+        {{ p.description }}<br>
+        <em>{{ p.stack }}</em><br>
+        <a href="/admin/projects/delete/{{ p.id }}">Удалить</a>
+    </li>
+    {% endfor %}
+</ul>
+{% endblock %}

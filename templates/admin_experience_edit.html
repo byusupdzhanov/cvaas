@@ -1,0 +1,38 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<h2>Редактировать опыт</h2>
+<form action="/admin/edit/{{ exp.id }}" method="post">
+    <label>Компания:</label><br>
+    <input name="company" value="{{ exp.company }}" required><br>
+
+    <label>Роль:</label><br>
+    <input name="role" value="{{ exp.role }}" required><br>
+
+    {% set start = exp.period.split(" — ")[0] %}
+    {% set end = exp.period.split(" — ")[1] if " — " in exp.period else "" %}
+    {% set end_value = end if end and end != "н.в." else "" %}
+    {% set current = end == "н.в." %}
+
+    <label>Начало:</label><br>
+    <input type="month" name="start" value="{{ start | replace('.', '-') }}" required><br>
+
+    <label>Окончание:</label><br>
+    <input type="month" name="end" id="end_month" {% if current %}disabled{% endif %} value="{{ end_value | replace('.', '-') }}"><br>
+
+    <label><input type="checkbox" id="current" name="current" {% if current %}checked{% endif %}> Настоящее время</label><br>
+
+    <label>Описание:</label><br>
+    <textarea name="description" rows="4">{{ exp.description }}</textarea><br>
+
+    <input type="submit" value="Сохранить">
+</form>
+
+<script>
+    const checkbox = document.getElementById('current');
+    const endField = document.getElementById('end_month');
+
+    checkbox.addEventListener('change', () => {
+        endField.disabled = checkbox.checked;
+    });
+</script>
+{% endblock %}

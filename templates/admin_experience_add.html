@@ -1,0 +1,33 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<h2>Добавить опыт работы</h2>
+<form action="/admin/add" method="post">
+    <label>Компания:</label><br>
+    <input name="company" required><br>
+
+    <label>Роль:</label><br>
+    <input name="role" required><br>
+
+    <label>Начало:</label><br>
+    <input type="month" name="start" required><br>
+
+    <label>Конец:</label><br>
+    <input type="month" name="end" id="end_month"><br>
+
+    <label><input type="checkbox" name="current" id="current"> Настоящее время</label><br>
+
+    <label>Описание:</label><br>
+    <textarea name="description" rows="4" required></textarea><br>
+
+    <input type="submit" value="Добавить">
+</form>
+
+<script>
+    const checkbox = document.getElementById('current');
+    const endField = document.getElementById('end_month');
+
+    checkbox.addEventListener('change', () => {
+        endField.disabled = checkbox.checked;
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<h2>📊 Панель управления</h2>
+
+<p>Добро пожаловать! Ниже — краткая сводка по вашему резюме:</p>
+
+{% if resume_updated %}
+<p>📄 Резюме обновлено: {{ resume_updated.strftime('%-d %B %Y, %H:%M') }}</p>
+{% else %}
+<p>📄 Резюме ещё не обновлялось</p>
+{% endif %}
+
+
+<ul>
+    <li>🧠 Навыки: {{ stats.skills }}</li>
+    <li>🏢 Опыт работы: {{ stats.experience }}</li>
+    <li>🎓 Образование: {{ stats.education }}</li>
+    <li>📚 Курсы: {{ stats.courses }}</li>
+    <li>🌐 Языки: {{ stats.languages }}</li>
+    <li>💼 Проекты: {{ stats.projects }}</li>
+    <li>📜 Сертификаты: {{ stats.certificates }}</li>
+    <li>🗣 Рекомендации: {{ stats.recommendations }}</li>
+</ul>
+{% endblock %}

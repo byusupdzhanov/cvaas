@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="login-container">
+    <h2 class="text-2xl font-semibold mb-4 text-center">🔐 Восстановление доступа</h2>
+    {% if error %}
+    <div class="bg-red-100 text-red-700 px-4 py-2 rounded mb-4 text-sm text-center">
+        {{ error }}
+    </div>
+    {% endif %}
+    <form method="post" action="/recover" class="space-y-4">
+        <label for="answer" class="block text-sm font-medium">
+            {{ question or "Место рождения?" }}
+        </label>
+        
+        <input type="text" id="answer" name="answer" class="w-full border rounded px-3 py-2" required>
+
+        <label for="totp" class="block text-sm font-medium">Код 2FA из приложения</label>
+        <input type="text" id="totp" name="totp" class="w-full border rounded px-3 py-2" required>
+
+        <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded">Восстановить</button>
+    </form>
+</div>
+{% endblock %}
