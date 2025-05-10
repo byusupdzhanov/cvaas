@@ -12,6 +12,6 @@ services:
       - ./resume.db:/app/resume.db        
       - ./static/uploads:/app/static/uploads 
     environment:
-      - CVAAS_ADMIN_USER=admin
-      - CVAAS_ADMIN_PASSWORD=allthingsareperfect
+      - CVAAS_ADMIN_USER=<user>
+      - CVAAS_ADMIN_PASSWORD=<password>
     restart: unless-stopped
