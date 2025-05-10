@@ -27,7 +27,7 @@
 ### Через Docker
 
 ```bash
-git clone https://github.com/yourusername/cvaas.git
+git clone https://github.com/byusupdzhanov/cvaas.git
 cd cvaas
 
 export CVAAS_ADMIN_USER=<user> # указать пользователя, для доступа в админку
