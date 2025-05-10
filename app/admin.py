@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from .database import SessionLocal, pwd_context
 from passlib import hash
-from .auth import verify_recovery_answer, require_login
+from .auth import require_login
 from .models import Experience, Course, Skill, Info, Education, Language, Project, Certificate, Recommendation, Admin
 from fastapi.templating import Jinja2Templates
 templates = Jinja2Templates(directory="templates")
@@ -326,7 +326,7 @@ async def recover_post(
     db: Session = Depends(get_db)
 ):
     admin = db.query(Admin).first()
-    if not admin or not verify_recovery_answer(answer):
+    if not admin or not admin.security_answer or admin.security_answer.strip().lower() != answer.strip().lower():
         return templates.TemplateResponse("recover.html", {
             "request": request,
             "error": "Неверный ответ на контрольный вопрос"

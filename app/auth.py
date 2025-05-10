@@ -42,6 +42,3 @@ def login(
 def logout(request: Request):
     request.session.clear()
     return RedirectResponse(url="/login", status_code=302)
-
-def verify_recovery_answer(answer: str):
-    return answer.strip().lower() == "ташкент"
