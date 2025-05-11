@@ -5,7 +5,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="/static/style.css?v=1">
     <link rel="icon" href="/static/uploads/logo.png" type="image/png">
-    <title>Резюме{% if info.get("name") %} – {{ info.get("name") }}{% endif %}</title>
+    <title>Резюме{% if info is defined and info.get("name") %} – {{ info.get("name") }}{% endif %}</title>
 </head>
 <body>
     <main>

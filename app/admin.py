@@ -456,15 +456,10 @@ async def update_info(
     vkontakte: str = Form(""),
     custom_link: str = Form(""),
     hide_phone: str = Form(None),
-    photo: UploadFile = File(default=None),
     db: Session = Depends(get_db)
 ):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
-
-    if photo is not None and photo.filename:
-        content = await photo.read()
-        Path("static/uploads/photo.jpg").write_bytes(content)
 
     fields = {
         "name": name,
