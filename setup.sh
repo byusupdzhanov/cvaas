@@ -1,6 +1,4 @@
 #!/bin/bash
-
-
 echo "Инициализация проекта CVaaS"
 
 if [ ! -f .env ]; then
