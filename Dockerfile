@@ -9,9 +9,6 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 COPY . .
 
-ENV CVAAS_ADMIN_USER=admin
-ENV CVAAS_ADMIN_PASSWORD=allthingsareperfect
-
 EXPOSE 8000
 
 CMD ["python", "run.py"]
