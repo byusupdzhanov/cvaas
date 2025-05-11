@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   cvaas:
     build:
@@ -11,7 +9,4 @@ services:
     volumes:
       - ./resume.db:/app/resume.db        
       - ./static/uploads:/app/static/uploads 
-    environment:
-      - CVAAS_ADMIN_USER=<user>
-      - CVAAS_ADMIN_PASSWORD=<password>
     restart: unless-stopped

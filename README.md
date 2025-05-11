@@ -24,22 +24,43 @@
 
 ## Установка
 
-### Через Docker
+### Вариант 1: автоматическая настройка (рекомендуется)
 
 ```bash
-git clone https://github.com/byusupdzhanov/cvaas.git
-cd cvaas
+./setup.sh
+```
 
-export CVAAS_ADMIN_USER=<user> # указать пользователя, для доступа в админку
-export CVAAS_ADMIN_PASSWORD=<password> # пароль для входа в админку
+> Скрипт создаст `.env`, инициализирует `resume.db`, настроит директории и запустит контейнер.
 
-docker-compose up --build
+---
+
+### Вариант 2: ручная настройка
+
+1. Создайте `.env` файл:
+
+```env
+CVAAS_ADMIN_USER=<youruser>
+CVAAS_ADMIN_PASSWORD=<yourpassword>
+```
+
+2. Убедитесь, что в корне проекта есть файл `resume.db` и папка `static/uploads`:
+
+```bash
+touch resume.db
+mkdir -p static/uploads
+```
+
+3. Сбилдите и запустите контейнер:
+
+```bash
+docker-compose build
+docker-compose up
 ```
 
 После запуска резюме доступно на: [http://localhost:8000](http://localhost:8000)
 
 > [!IMPORTANT]  
-> Измените значение host="x.x.x.x" на необходимое вам
+> Измените значение host="x.x.x.x" в `run.py` на необходимое вам
 
 ---
 
