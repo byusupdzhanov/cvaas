@@ -439,28 +439,46 @@ def edit_info_page(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse("admin_info.html", {"request": request, "info": infos})
 
 
+from fastapi import File, UploadFile
+
 @router.post("/admin/info")
-async def update_info(request: Request, db: Session = Depends(get_db)):
+async def update_info(
+    request: Request,
+    name: str = Form(""),
+    position: str = Form(""),
+    email: str = Form(""),
+    phone: str = Form(""),
+    telegram: str = Form(""),
+    about: str = Form(""),
+    github: str = Form(""),
+    linkedin: str = Form(""),
+    whatsapp: str = Form(""),
+    vkontakte: str = Form(""),
+    custom_link: str = Form(""),
+    hide_phone: str = Form(None),
+    photo: UploadFile = File(default=None),
+    db: Session = Depends(get_db)
+):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
 
-    form = await request.form()
+    if photo is not None and photo.filename:
+        content = await photo.read()
+        Path("static/uploads/photo.jpg").write_bytes(content)
 
     fields = {
-        "name": form.get("name", ""),
-        "position": form.get("position", ""),
-        "email": form.get("email", ""),
-        "phone": form.get("phone", ""),
-        "telegram": form.get("telegram", ""),
-        "about": form.get("about", ""),
-        "github": form.get("github", ""),
-        "linkedin": form.get("linkedin", ""),
-        "whatsapp": form.get("whatsapp", ""),
-        "vkontakte": form.get("vkontakte", ""),
-        "custom_link": form.get("custom_link", ""),
-        "hide_phone": "1" if form.get("hide_phone") == "on" else "0",
-        "hidden_message": form.get("hidden_message", ""),
-        "template": form.get("template", "classic")
+        "name": name,
+        "position": position,
+        "email": email,
+        "phone": phone,
+        "telegram": telegram,
+        "about": about,
+        "github": github,
+        "linkedin": linkedin,
+        "whatsapp": whatsapp,
+        "vkontakte": vkontakte,
+        "custom_link": custom_link,
+        "hide_phone": "1" if hide_phone == "on" else "0",
     }
 
     for field, value in fields.items():
@@ -469,9 +487,10 @@ async def update_info(request: Request, db: Session = Depends(get_db)):
             record.value = value
         else:
             db.add(Info(field=field, value=value))
-
     db.commit()
+
     return RedirectResponse(url="/admin/info", status_code=303)
+
 
 @router.get("/admin/settings", response_class=HTMLResponse)
 def show_settings(request: Request, db: Session = Depends(get_db)):
@@ -701,29 +720,20 @@ def delete_education(id: int, request: Request, db: Session = Depends(get_db)):
         db.commit()
     return RedirectResponse(url="/admin/education", status_code=303)
 
-@router.get("/admin/photo", response_class=HTMLResponse)
-def photo_upload_form(request: Request):
-    auth_redirect = require_login(request)
-    if auth_redirect: return auth_redirect
-    return templates.TemplateResponse("admin_photo.html", {
-    "request": request,
-    "files": os.listdir("static/uploads")
-})
-
-@router.post("/admin/photo")
-def upload_photo(
+@router.post("/admin/upload-photo")
+async def upload_photo(
     request: Request,
-    file: UploadFile = File(...),
+    photo: UploadFile = File(...),
 ):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
 
-    upload_path = "static/uploads/photo.jpg"
+    if photo and photo.filename:
+        content = await photo.read()
+        Path("static/uploads/photo.jpg").write_bytes(content)
 
-    with open(upload_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    return RedirectResponse(url="/admin/info", status_code=303)
 
-    return RedirectResponse(url="/admin/photo", status_code=303)
 
 @router.get("/admin/languages", response_class=HTMLResponse)
 def view_languages(request: Request, db: Session = Depends(get_db)):

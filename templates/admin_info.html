@@ -1,7 +1,18 @@
 {% extends "admin_base.html" %}
 {% block content %}
 <h2>Редактировать информацию</h2>
-<form method="post" action="/admin/info">
+
+<h3>Фото</h3>
+<form method="post" action="/admin/upload-photo" enctype="multipart/form-data" style="margin-bottom: 1.5rem;">
+  {% if photo %}
+    <p><img src="/static/uploads/photo.jpg" width="100"></p>
+  {% endif %}
+  <input type="file" name="photo" accept="image/*"><br><br>
+  <button type="submit" class="btn btn-secondary">💾 Обновить фото</button>
+</form>
+
+<form method="post" action="/admin/info" enctype="multipart/form-data">
+    <h3>Основная информация</h3>
     <label>Имя:</label><br>
     <input name="name" value="{{ info.get('name', '') }}"><br>
 
