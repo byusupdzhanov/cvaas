@@ -4,6 +4,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, FileResponse
 from starlette.responses import RedirectResponse
 from .models import Experience, Skill, Info, Course, Education, Language, Project, Certificate, Recommendation
+from .version import __version__
 from sqlalchemy.orm import Session
 from .database import SessionLocal
 from .auth import router as auth_router, require_login
@@ -64,7 +65,8 @@ def read_root(request: Request):
         "certificates": certificates, 
         "recommendations": recommendations,
         "last_updated": last_updated,
-        "template": template_name
+        "template": template_name,
+        "version": __version__,
     })
 def get_latest_updated(db: Session) -> datetime | None:
     timestamps = []
