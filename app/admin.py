@@ -18,6 +18,7 @@ import io
 from pathlib import Path
 import pyotp 
 import secrets
+from jinja2 import pass_context
 
 router = APIRouter()
 
@@ -27,6 +28,12 @@ def get_db():
         yield db
     finally:
         db.close()
+
+@pass_context
+def nl2br(ctx, value):
+    return value.replace('\n', '<br>')
+
+templates.env.filters['nl2br'] = nl2br
 
 @router.get("/admin")
 def admin_home_redirect():
@@ -212,6 +219,17 @@ async def import_json(
     })
 
 
+@router.post("/admin/experience/delete")
+def delete_experience(request: Request, id: int = Form(...), db: Session = Depends(get_db)):
+    auth_redirect = require_login(request)
+    if auth_redirect: return auth_redirect
+
+    exp = db.query(Experience).filter_by(id=id).first()
+    if exp:
+        db.delete(exp)
+        db.commit()
+
+    return RedirectResponse("/admin/experience", status_code=303)
 
 
 
@@ -231,14 +249,14 @@ def edit_experience_form(id: int, request: Request, db: Session = Depends(get_db
 @router.post("/admin/edit/{id}")
 def edit_experience(
     id: int,
+    request: Request,
     company: str = Form(...),
     role: str = Form(...),
     start: str = Form(...),
     end: str = Form(None),
     current: str = Form(None),
     description: str = Form(...),
-    db: Session = Depends(get_db),
-    request = Request
+    db: Session = Depends(get_db)
 ):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
@@ -261,17 +279,19 @@ def edit_experience(
     exp.description = description
     db.commit()
 
-    return RedirectResponse(url="/admin", status_code=303)
+    return RedirectResponse(url="/admin/add", status_code=303)
 
 
 
 
 @router.get("/admin/add", response_class=HTMLResponse)
-def form_add_experience(request: Request):
+def form_add_experience(request: Request, db: Session = Depends(get_db)):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
+    experiences = db.query(Experience).all()
     return templates.TemplateResponse("admin_experience_add.html", {
-        "request": request
+        "request": request,
+        "experiences": experiences
     })
 
 
@@ -310,7 +330,7 @@ def delete_experience(request: Request, id: int, db: Session = Depends(get_db)):
     if exp:
         db.delete(exp)
         db.commit()
-    return RedirectResponse(url="/admin", status_code=303)
+    return RedirectResponse(url="/admin/add", status_code=303)
 
 @router.get("/recover", response_class=HTMLResponse)
 def recover_form(request: Request, db: Session = Depends(get_db)):
