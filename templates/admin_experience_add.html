@@ -22,6 +22,24 @@
     <input type="submit" value="Добавить">
 </form>
 
+<h3>Текущий опыт</h3>
+{% for exp in experiences %}
+  <div class="experience-block">
+    <div>
+      <strong>{{ exp.company }} ({{ exp.period }})</strong><br>
+      {{ exp.role }}<br>
+      <p>{{ exp.description | nl2br | safe }}</p>
+    </div>
+    <div class="btn-group">
+      <a href="/admin/edit/{{ exp.id }}" class="btn btn-secondary btn-small">✏️ Редактировать</a>
+      <a href="/admin/delete/{{ exp.id }}" class="btn btn-danger btn-small"
+         onclick="return confirm('Удалить опыт?')">🗑️ Удалить</a>
+    </div>
+  </div>
+{% else %}
+  <p>Нет добавленных записей</p>
+{% endfor %}
+
 <script>
     const checkbox = document.getElementById('current');
     const endField = document.getElementById('end_month');
