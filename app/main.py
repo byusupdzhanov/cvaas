@@ -12,6 +12,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from os.path import exists
 from datetime import datetime
 from time import time
+from jinja2 import pass_context
 
 
 app = FastAPI()
@@ -20,6 +21,12 @@ app.add_middleware(SessionMiddleware, secret_key="devops_secret_key_2025_!@#%&xy
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 templates = Jinja2Templates(directory="templates")
+
+@pass_context
+def nl2br(ctx, value):
+    return value.replace('\n', '<br>')
+
+templates.env.filters['nl2br'] = nl2br
 
 @app.get("/", response_class=HTMLResponse)
 def read_root(request: Request):
