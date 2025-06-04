@@ -12,6 +12,8 @@ class Experience(Base, TimestampMixin):
     role = Column(String)
     period = Column(String)
     description = Column(Text)
+    start_date = Column(String)  # "YYYY-MM"
+    end_date = Column(String, nullable=True)
 
 class Skill(Base, TimestampMixin):
     __tablename__ = "skills"

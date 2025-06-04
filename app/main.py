@@ -39,7 +39,7 @@ def read_root(request: Request):
             "request": request,
             "message": infos.get("hidden_message", "❌ Резюме временно скрыто владельцем.")
         })
-    experiences = db.query(Experience).all()
+    experiences = db.query(Experience).order_by(Experience.start_date.desc()).all()
     skills = db.query(Skill).all()
     courses = db.query(Course).all()
     educations = db.query(Education).all()

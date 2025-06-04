@@ -277,6 +277,8 @@ def edit_experience(
     exp.role = role
     exp.period = period
     exp.description = description
+    exp.start_date = start
+    exp.end_date = None if current else end
     db.commit()
 
     return RedirectResponse(url="/admin/add", status_code=303)
@@ -288,7 +290,7 @@ def edit_experience(
 def form_add_experience(request: Request, db: Session = Depends(get_db)):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
-    experiences = db.query(Experience).all()
+    experiences = db.query(Experience).order_by(Experience.start_date.desc()).all()
     return templates.TemplateResponse("admin_experience_add.html", {
         "request": request,
         "experiences": experiences
@@ -316,10 +318,17 @@ def add_experience(request: Request,
     else:
         period = start_fmt
 
-    exp = Experience(company=company, role=role, period=period, description=description)
+    exp = Experience(
+    company=company,
+    role=role,
+    period=period,
+    description=description,
+    start_date=start,
+    end_date=None if current else end
+    )
     db.add(exp)
     db.commit()
-    return RedirectResponse(url="/admin", status_code=303)
+    return RedirectResponse(url="/admin/add", status_code=303)
 
 
 @router.get("/admin/delete/{id}")
