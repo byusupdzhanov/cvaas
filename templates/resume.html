@@ -64,6 +64,8 @@
 
 
     <h2 class="text-xl font-semibold mt-6 mb-2">Опыт работы</h2>
+    <span class="total-exp">Общий опыт: {{ total_experience }}</span>
+
 {% for job in experience %}
     <div class="mb-4">
         <strong>{{ job.company }} ({{ job.period }})</strong><br>
