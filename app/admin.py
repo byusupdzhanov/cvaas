@@ -478,6 +478,7 @@ async def update_info(
     email: str = Form(""),
     phone: str = Form(""),
     telegram: str = Form(""),
+    job_search_status: str = Form("none"),
     about: str = Form(""),
     github: str = Form(""),
     linkedin: str = Form(""),
@@ -503,6 +504,7 @@ async def update_info(
         "vkontakte": vkontakte,
         "custom_link": custom_link,
         "hide_phone": "1" if hide_phone == "on" else "0",
+        "job_search_status": job_search_status,
     }
 
     for field, value in fields.items():
