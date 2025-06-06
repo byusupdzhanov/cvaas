@@ -9,6 +9,7 @@ __pycache__/
 .env
 .env.*
 app/__pycache__
+.pylintrc
 
 # Virtualenv / venv
 venv/

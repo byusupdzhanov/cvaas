@@ -498,4 +498,16 @@ a:hover {
   .btn-danger:hover {
     background-color: #dc2626;
   }
-  
+
+  .total-exp {
+    float: right;
+    color: #6b7280;
+    font-size: 14px;
+    margin-top: -24px;
+    }
+
+    .job-status {
+        margin-bottom: 10px;
+        font-size: 15px;
+        color: #555;
+    }

@@ -11,7 +11,8 @@ from .auth import router as auth_router, require_login
 from fastapi.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
 from os.path import exists
-from datetime import datetime
+from datetime import datetime, date
+from dateutil.relativedelta import relativedelta
 from time import time
 from jinja2 import pass_context
 
@@ -39,7 +40,7 @@ def read_root(request: Request):
             "request": request,
             "message": infos.get("hidden_message", "❌ Резюме временно скрыто владельцем.")
         })
-    experiences = db.query(Experience).all()
+    experiences = db.query(Experience).order_by(Experience.start_date.desc()).all()
     skills = db.query(Skill).all()
     courses = db.query(Course).all()
     educations = db.query(Education).all()
@@ -50,11 +51,13 @@ def read_root(request: Request):
     recommendations = db.query(Recommendation).all()
     last_updated = get_latest_updated(db)
     template_name = infos.get("template", "classic")
+    total_experience = calculate_total_experience(experiences)
     db.close()
 
     return templates.TemplateResponse("resume.html", {
         "request": request,
         "experience": experiences,
+        "total_experience": total_experience,
         "courses": courses,
         "skills": skills,
         "info": infos,
@@ -68,6 +71,50 @@ def read_root(request: Request):
         "template": template_name,
         "version": __version__,
     })
+
+def calculate_total_experience(experiences):
+    total_months = 0
+    now = datetime.today()
+
+    for exp in experiences:
+        if "—" not in exp.period:
+            continue
+        start_str, end_str = exp.period.split("—")
+        start = datetime.strptime(start_str.strip(), "%m.%Y")
+
+        end_str = end_str.strip()
+        end = now if end_str == "н.в." else datetime.strptime(end_str, "%m.%Y")
+
+        delta = relativedelta(end, start)
+        total_months += delta.years * 12 + delta.months
+
+    years = total_months // 12
+    months = total_months % 12
+
+    year_word = pluralize_ru(years, ["год", "года", "лет"])
+    month_word = pluralize_ru(months, ["месяц", "месяца", "месяцев"])
+
+    if years and months:
+        return f"{years} {year_word} {months} {month_word}"
+    elif years:
+        return f"{years} {year_word}"
+    elif months:
+        return f"{months} {month_word}"
+    else:
+        return "меньше месяца"
+
+def pluralize_ru(number, forms):
+    """
+    Склонение по числу: ["год", "года", "лет"] и ["месяц", "месяца", "месяцев"]
+    """
+    number = abs(number)
+    if number % 10 == 1 and number % 100 != 11:
+        return forms[0]
+    elif 2 <= number % 10 <= 4 and not (12 <= number % 100 <= 14):
+        return forms[1]
+    else:
+        return forms[2]
+
 def get_latest_updated(db: Session) -> datetime | None:
     timestamps = []
 

@@ -19,6 +19,13 @@
     <label>Позиция:</label><br>
     <input name="position" value="{{ info.get('position', '') }}"><br>
 
+    <label>Статус поиска работы:</label><br>
+    <select name="job_search_status">
+      <option value="actively" {% if info.get('job_search_status') == 'actively' %}selected{% endif %}>Активно ищу работу</option>
+      <option value="passively" {% if info.get('job_search_status') == 'passively' %}selected{% endif %}>Рассматриваю предложения</option>
+      <option value="none" {% if info.get('job_search_status') == 'none' %}selected{% endif %}>Не ищу работу</option>
+    </select><br><br>
+
     <h3>Контакты</h3>
 
 <label>Email:</label><br>

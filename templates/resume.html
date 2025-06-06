@@ -28,6 +28,17 @@
         </p>
     </div>
 </div>
+{% set status = {
+    'actively': "🔎 Активно ищу работу",
+    'passively': "👀 Рассматриваю предложения",
+    'none': "🙅‍♂️ Не ищу работу"
+} %}
+
+{% if info.get('job_search_status') %}
+  <p class="job-status" style="color: #555;">
+    Статус: {{ status[info.get('job_search_status')] }}
+  </p>
+{% endif %}
 
     <h2 class="text-xl font-semibold mt-6 mb-2">Контакты</h2>
 <ul class="space-y-1 text-gray-700">
@@ -64,6 +75,8 @@
 
 
     <h2 class="text-xl font-semibold mt-6 mb-2">Опыт работы</h2>
+    <span class="total-exp">Общий опыт: {{ total_experience }}</span>
+
 {% for job in experience %}
     <div class="mb-4">
         <strong>{{ job.company }} ({{ job.period }})</strong><br>
