@@ -475,6 +475,7 @@ async def update_info(
     request: Request,
     name: str = Form(""),
     position: str = Form(""),
+    location: str = Form(""),
     email: str = Form(""),
     phone: str = Form(""),
     telegram: str = Form(""),
@@ -505,6 +506,7 @@ async def update_info(
         "custom_link": custom_link,
         "hide_phone": "1" if hide_phone == "on" else "0",
         "job_search_status": job_search_status,
+        "location": location,
     }
 
     for field, value in fields.items():
