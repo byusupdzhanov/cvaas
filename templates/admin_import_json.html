@@ -1,18 +1,29 @@
 {% extends "admin_base.html" %}
 {% block content %}
-<h2>📥 Импорт резюме из JSON</h2>
-<p>Вы можете импортировать файл, полученный через экспорт. Поддерживаются все основные блоки (опыт, курсы, навыки и т.д.).</p>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Импорт JSON</h1>
+        <p class="page-subtitle">Загрузи ранее экспортированный файл и восстанови структуру резюме без ручного ввода.</p>
+    </div>
+</div>
 
-<form action="/admin/import-json" method="post" enctype="multipart/form-data" class="mt-4">
-    <input type="file" name="json_file" accept=".json" required>
-    <button type="submit" class="btn-secondary">
-        <i class="fas fa-file-import"></i> Импортировать
-    </button>
-</form>
+<section class="panel">
+    <h2 class="panel-title">Загрузка файла</h2>
+    <p class="helper">Поддерживаются JSON-файлы, полученные через встроенный экспорт CVaaS.</p>
+    <form action="/admin/import-json" method="post" enctype="multipart/form-data">
+        <div class="field">
+            <label for="json_file">Файл резюме</label>
+            <input id="json_file" type="file" name="json_file" accept=".json" required>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn-primary"><i class="fas fa-file-import"></i> Импортировать</button>
+        </div>
+    </form>
 
-{% if json_success %}
-  <p class="mt-4 text-green-600">✅ {{ json_success }}</p>
-{% elif json_error %}
-  <p class="mt-4 text-red-600">❌ {{ json_error }}</p>
-{% endif %}
+    {% if json_success %}
+        <div class="alert-success">{{ json_success }}</div>
+    {% elif json_error %}
+        <div class="alert-error">{{ json_error }}</div>
+    {% endif %}
+</section>
 {% endblock %}

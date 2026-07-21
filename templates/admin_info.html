@@ -1,66 +1,179 @@
 {% extends "admin_base.html" %}
 {% block content %}
-<h2>Редактировать информацию</h2>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ _('Информация') }}</h1>
+        <p class="page-subtitle">{{ _('Главный экран редактирования публичного профиля: имя, позиция, контакты, ссылки и личное описание.') }}</p>
+    </div>
+</div>
 
-<h3>Фото</h3>
-<form method="post" action="/admin/upload-photo" enctype="multipart/form-data" style="margin-bottom: 1.5rem;">
-  {% if photo %}
-    <p><img src="/static/uploads/photo.jpg" width="100"></p>
-  {% endif %}
-  <input type="file" name="photo" accept="image/*"><br><br>
-  <button type="submit" class="btn btn-secondary">💾 Обновить фото</button>
-</form>
+<section class="panel">
+    <div class="panel-title-row">
+        <h2 class="panel-title">{{ _('Фотография') }}</h2>
+        <span class="badge badge-neutral">{{ _('Фото профиля') }}</span>
+    </div>
+    {% if photo %}
+        <div class="panel" style="margin-bottom: 16px;">
+            <img src="/static/uploads/photo.jpg?{{ photo_version if photo_version else '' }}" alt="{{ _('Текущее фото') }}" style="width: min(220px, 100%); border-radius: 22px; aspect-ratio: 0.82; object-fit: cover;">
+        </div>
+    {% endif %}
+    <form method="post" action="/admin/upload-photo" enctype="multipart/form-data">
+        <div class="field">
+            <label for="photo">{{ _('Загрузить новую фотографию') }}</label>
+            <input id="photo" class="upload-dropzone-input" type="file" name="photo" accept="image/*">
+            <label class="upload-dropzone" id="photo-dropzone" for="photo">
+                <div class="upload-dropzone-body">
+                    <div class="upload-dropzone-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                    <div>
+                        <strong>{{ _('Перетащи фото сюда') }}</strong>
+                        <p>{{ _('или нажми, чтобы выбрать файл') }}</p>
+                    </div>
+                </div>
+            </label>
+            <p class="helper" id="photo-file-name">{{ _('Лучше всего работают вертикальные фотографии с хорошим контрастом. На публичной странице фото обрежется под карточку.') }}</p>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">{{ _('Обновить фото') }}</button>
+        </div>
+    </form>
+</section>
 
-<form method="post" action="/admin/info" enctype="multipart/form-data">
-    <h3>Основная информация</h3>
-    <label>Имя:</label><br>
-    <input name="name" value="{{ info.get('name', '') }}"><br>
+<section class="panel">
+    <div class="panel-title-row">
+        <h2 class="panel-title">{{ _('Публичный профиль') }}</h2>
+        <span class="badge">Resume Identity</span>
+    </div>
+    <form method="post" action="/admin/info" enctype="multipart/form-data">
+        <div class="field-grid">
+            <div class="field">
+                <label for="name">{{ _('Имя') }}</label>
+                <input id="name" name="name" value="{{ info.get('name', '') }}">
+            </div>
+            <div class="field">
+                <label for="position">{{ _('Позиция') }}</label>
+                <input id="position" name="position" value="{{ info.get('position', '') }}">
+            </div>
+            <div class="field">
+                <label for="location">{{ _('География') }}</label>
+                <input id="location" name="location" value="{{ info.get('location', '') }}" placeholder="{{ _('Москва, Россия') }}">
+            </div>
+            <div class="field field-full">
+                <label for="salary_expectation">{{ _('Желаемая зарплата / вилка') }}</label>
+                <div class="input-row input-row--salary">
+                    <input id="salary_expectation" name="salary_expectation" value="{{ info.get('salary_expectation', '') }}" placeholder="250 000-350 000">
+                    <select id="salary_currency" name="salary_currency" aria-label="{{ _('Валюта зарплаты') }}">
+                        <option value="rub" {% if info.get('salary_currency', 'rub') == 'rub' %}selected{% endif %}>₽</option>
+                        <option value="usd" {% if info.get('salary_currency') == 'usd' %}selected{% endif %}>$</option>
+                        <option value="eur" {% if info.get('salary_currency') == 'eur' %}selected{% endif %}>€</option>
+                    </select>
+                </div>
+                <p class="helper">{{ _('Укажи сумму или вилку, а валюту выбери справа.') }}</p>
+            </div>
+            <div class="field">
+                <label for="job_search_status">{{ _('Статус поиска работы') }}</label>
+                <select id="job_search_status" name="job_search_status">
+                    <option value="actively" {% if info.get('job_search_status') == 'actively' %}selected{% endif %}>{{ _('Активно ищу работу') }}</option>
+                    <option value="passively" {% if info.get('job_search_status') == 'passively' %}selected{% endif %}>{{ _('Рассматриваю предложения') }}</option>
+                    <option value="none" {% if info.get('job_search_status') == 'none' %}selected{% endif %}>{{ _('Не ищу работу') }}</option>
+                </select>
+            </div>
 
-    <label>Позиция:</label><br>
-    <input name="position" value="{{ info.get('position', '') }}"><br>
+            <div class="field">
+                <label for="email">Email</label>
+                <input id="email" name="email" value="{{ info.get('email', '') }}">
+            </div>
+            <div class="field">
+                <label for="phone">{{ _('Телефон') }}</label>
+                <input id="phone" name="phone" value="{{ info.get('phone', '') }}">
+            </div>
+            <div class="field field-full">
+                <label class="checkbox-row">
+                    <input type="checkbox" name="hide_phone" {% if info.get('hide_phone') == '1' %}checked{% endif %}>
+                    {{ _('Не показывать номер телефона в публичном резюме') }}
+                </label>
+            </div>
 
-    <label>География (город, страна):</label><br>
-    <input name="location" value="{{ info.get('location', '') }}"><br>
+            <div class="field">
+                <label for="telegram">Telegram</label>
+                <input id="telegram" name="telegram" value="{{ info.get('telegram', '') }}">
+            </div>
+            <div class="field">
+                <label for="github">GitHub</label>
+                <input id="github" name="github" value="{{ info.get('github', '') }}">
+            </div>
+            <div class="field">
+                <label for="linkedin">LinkedIn</label>
+                <input id="linkedin" name="linkedin" value="{{ info.get('linkedin', '') }}">
+            </div>
+            <div class="field">
+                <label for="whatsapp">WhatsApp</label>
+                <input id="whatsapp" name="whatsapp" value="{{ info.get('whatsapp', '') }}">
+            </div>
+            <div class="field">
+                <label for="vkontakte">ВКонтакте</label>
+                <input id="vkontakte" name="vkontakte" value="{{ info.get('vkontakte', '') }}">
+            </div>
+            <div class="field">
+                <label for="custom_link">{{ _('Дополнительная ссылка') }}</label>
+                <input id="custom_link" name="custom_link" value="{{ info.get('custom_link', '') }}">
+            </div>
 
-    <label>Статус поиска работы:</label><br>
-    <select name="job_search_status">
-      <option value="actively" {% if info.get('job_search_status') == 'actively' %}selected{% endif %}>Активно ищу работу</option>
-      <option value="passively" {% if info.get('job_search_status') == 'passively' %}selected{% endif %}>Рассматриваю предложения</option>
-      <option value="none" {% if info.get('job_search_status') == 'none' %}selected{% endif %}>Не ищу работу</option>
-    </select><br>
+            <div class="field field-full">
+                <label for="about">{{ _('Обо мне') }}</label>
+                <textarea id="about" name="about" rows="6">{{ info.get('about', '') }}</textarea>
+                <div class="field-guidance">
+                    <p class="helper">{{ _('Этот текст используется как главная вводная секция публичного резюме. Пиши коротко, плотно и по делу.') }}</p>
+                    <p class="helper">{{ _('Хороший формат: кто ты, в чем твоя сильная зона, какой тип задач решаешь и что даешь бизнесу.') }}</p>
+                    <p class="helper">{{ _('Плохой формат: “ответственный, коммуникабельный, быстро обучаюсь” без фактуры и направления.') }}</p>
+                </div>
+                <div class="content-tip-card">
+                    <p class="content-tip-kicker">{{ _('Ориентир') }}</p>
+                    <p class="content-tip-copy">{{ _('3-5 строк. Например: backend / product / design / management, стек или домен, 1-2 сильных акцента и тип роли, которую ищешь.') }}</p>
+                </div>
+            </div>
+        </div>
 
-    <br>
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">{{ _('Сохранить изменения') }}</button>
+        </div>
+    </form>
+</section>
 
-    <h3>Контакты</h3>
+<script>
+    const photoInput = document.getElementById('photo');
+    const photoDropzone = document.getElementById('photo-dropzone');
+    const photoFileName = document.getElementById('photo-file-name');
 
-<label>Email:</label><br>
-<input name="email" value="{{ info.get('email', '') }}"><br>
+    const updatePhotoLabel = () => {
+        if (photoInput.files && photoInput.files.length > 0) {
+            photoFileName.textContent = `{{ _('Выбран файл:') }} ${photoInput.files[0].name}`;
+        } else {
+            photoFileName.textContent = '{{ _('Лучше всего работают вертикальные фотографии с хорошим контрастом. На публичной странице фото обрежется под карточку.') }}';
+        }
+    };
 
-<label>Телефон:</label><br>
-<input name="phone" value="{{ info.get('phone', '') }}"><br>
-<label><input type="checkbox" name="hide_phone" {% if info.get('hide_phone') == '1' %}checked{% endif %}> Не показывать телефон</label><br><br>
+    ['dragenter', 'dragover'].forEach((eventName) => {
+        photoDropzone.addEventListener(eventName, (event) => {
+            event.preventDefault();
+            photoDropzone.classList.add('is-dragover');
+        });
+    });
 
-<label>Telegram:</label><br>
-<input name="telegram" value="{{ info.get('telegram', '') }}"><br>
+    ['dragleave', 'dragend', 'drop'].forEach((eventName) => {
+        photoDropzone.addEventListener(eventName, (event) => {
+            event.preventDefault();
+            photoDropzone.classList.remove('is-dragover');
+        });
+    });
 
-<label>GitHub:</label><br>
-<input name="github" value="{{ info.get('github', '') }}"><br>
+    photoDropzone.addEventListener('drop', (event) => {
+        const files = event.dataTransfer.files;
+        if (files && files.length > 0) {
+            photoInput.files = files;
+            updatePhotoLabel();
+        }
+    });
 
-<label>LinkedIn:</label><br>
-<input name="linkedin" value="{{ info.get('linkedin', '') }}"><br>
-
-<label>WhatsApp:</label><br>
-<input name="whatsapp" value="{{ info.get('whatsapp', '') }}"><br>
-
-<label>ВКонтакте:</label><br>
-<input name="vkontakte" value="{{ info.get('vkontakte', '') }}"><br>
-
-<label>Ссылка (другая):</label><br>
-<input name="custom_link" value="{{ info.get('custom_link', '') }}"><br>
-
-
-    <label>Обо мне:</label><br>
-    <textarea name="about" rows="4">{{ info.get('about', '') }}</textarea><br>
-    <input type="submit" value="Сохранить">
-</form>
+    photoInput.addEventListener('change', updatePhotoLabel);
+</script>
 {% endblock %}

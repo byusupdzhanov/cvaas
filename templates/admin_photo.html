@@ -1,14 +1,28 @@
 {% extends "admin_base.html" %}
 {% block content %}
-<h2>Загрузка фотографии</h2>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ _('Фотография') }}</h1>
+        <p class="page-subtitle">{{ _('Отдельный экран для загрузки фото, если понадобится вынести этот сценарий из общего профиля.') }}</p>
+    </div>
+</div>
 
-{% if "photo.jpg" in files %}
-    <p>Текущее фото:</p>
-    <img src="/static/uploads/photo.jpg" width="150"><br><br>
-{% endif %}
+<section class="panel">
+    {% if "photo.jpg" in files %}
+        <div class="panel" style="margin-bottom: 16px;">
+            <img src="/static/uploads/photo.jpg" alt="{{ _('Текущее фото') }}" style="width: min(240px, 100%); border-radius: 22px; aspect-ratio: 0.82; object-fit: cover; filter: grayscale(1);">
+        </div>
+    {% endif %}
 
-<form action="/admin/photo" method="post" enctype="multipart/form-data">
-    <input type="file" name="file" accept="image/*" required>
-    <input type="submit" value="Загрузить">
-</form>
+    <form action="/admin/photo" method="post" enctype="multipart/form-data">
+        <div class="field">
+            <label for="file">{{ _('Загрузить изображение') }}</label>
+            <input id="file" type="file" name="file" accept="image/*" required>
+            <p class="helper">{{ _('Подойдет контрастный портрет в вертикальном формате.') }}</p>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">{{ _('Загрузить фото') }}</button>
+        </div>
+    </form>
+</section>
 {% endblock %}

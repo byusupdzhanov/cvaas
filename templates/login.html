@@ -1,49 +1,41 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="{{ locale or 'ru' }}">
 <head>
     <meta charset="UTF-8">
-    <title>Вход</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            background-color: #f0f4f8;
-            padding: 2rem;
-        }
-        form {
-            background: white;
-            padding: 2rem;
-            border-radius: 6px;
-            max-width: 400px;
-            margin: auto;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        input {
-            display: block;
-            margin-bottom: 1rem;
-            padding: 0.5rem;
-            width: 100%;
-        }
-        a {
-            color: #2563eb;
-            font-size: 0.9rem;
-        }
-        .error {
-            color: #dc2626;
-            font-size: 0.9rem;
-            margin-bottom: 1rem;
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css?v=15">
+    <title>{{ _('Вход в CVaaS') }}</title>
 </head>
 <body>
-    <form method="post" action="/login">
-        <h2>Вход в админку</h2>
-        {% if error %}
-            <div class="error">{{ error }}</div>
-        {% endif %}
-        <input name="username" placeholder="Логин">
-        <input type="password" name="password" placeholder="Пароль">
-        <input type="submit" value="Войти">
-        <a href="/recover">Забыли пароль?</a>
-    </form>
+    <div class="auth-shell">
+        <div class="auth-card">
+            <span class="badge">CVaaS Admin</span>
+            <h1>{{ _('Вход в админку') }}</h1>
+            <p class="auth-subtitle">{{ _('Современный редактор резюме начинается с чистой панели входа. Введи свои данные, чтобы продолжить редактирование.') }}</p>
+
+            {% if error %}
+                <div class="alert-error">{{ error }}</div>
+            {% endif %}
+
+            <form method="post" action="/login">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <div class="field">
+                    <label for="username">{{ _('Логин') }}</label>
+                    <input id="username" name="username" placeholder="admin">
+                </div>
+                <div class="field">
+                    <label for="password">{{ _('Пароль') }}</label>
+                    <input id="password" type="password" name="password" placeholder="••••••••">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">{{ _('Войти') }}</button>
+                    <a href="/recover" class="btn-secondary">{{ _('Забыли пароль?') }}</a>
+                </div>
+            </form>
+        </div>
+    </div>
 </body>
 </html>

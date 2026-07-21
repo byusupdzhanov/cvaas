@@ -1,24 +1,60 @@
 {% extends "admin_base.html" %}
 {% block content %}
-<h2>Языки</h2>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ _('Языки') }}</h1>
+        <p class="page-subtitle">{{ _('Отдельный блок для языков. Лаконично и без визуального мусора.') }}</p>
+    </div>
+</div>
 
-<form action="/admin/languages/add" method="post">
-    <label>Название языка:</label><br>
-    <input name="name"><br>
+<section class="panel">
+    <h2 class="panel-title">{{ _('Добавить язык') }}</h2>
+    <form action="/admin/languages/add" method="post">
+        <div class="field-grid">
+            <div class="field">
+                <label for="language-name">{{ _('Название языка') }}</label>
+                <input id="language-name" name="name" placeholder="{{ _('Например: English') }}">
+            </div>
+            <div class="field">
+                <label for="language-level">{{ _('Уровень') }}</label>
+                <select id="language-level" name="level">
+                    {% for lvl in levels %}
+                        <option value="{{ lvl }}">{{ _(lvl) }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">{{ _('Добавить') }}</button>
+        </div>
+    </form>
+</section>
 
-    <label>Уровень:</label><br>
-    <select name="level">
-        {% for lvl in levels %}
-            <option value="{{ lvl }}">{{ lvl }}</option>
+<section class="panel">
+    <div class="panel-title-row">
+        <h2 class="panel-title">{{ _('Список языков') }}</h2>
+        <span class="badge badge-neutral">{{ languages|length }} шт.</span>
+    </div>
+    <ul class="stack-list">
+        {% for lang in languages %}
+            <li>
+                <div class="stack-list-item-head">
+                    <div>
+                        <p class="stack-list-item-title">{{ lang.name }}</p>
+                        <p class="stack-list-item-subtitle">{{ _(lang.level) }}</p>
+                    </div>
+                    <div class="stack-actions">
+                        <form method="post" action="/admin/languages/delete/{{ lang.id }}">
+                            <button type="submit" class="link-button">{{ _('Удалить') }}</button>
+                        </form>
+                    </div>
+                </div>
+            </li>
+        {% else %}
+            <li>
+                <p class="stack-list-item-copy">{{ _('Список пока пуст. Обычно достаточно 2-4 языков с четким уровнем.') }}</p>
+            </li>
         {% endfor %}
-    </select><br>
-
-    <input type="submit" value="Добавить">
-</form>
-
-<ul>
-    {% for lang in languages %}
-    <li>{{ lang.name }} — {{ lang.level }} <a href="/admin/languages/delete/{{ lang.id }}">Удалить</a></li>
-    {% endfor %}
-</ul>
+    </ul>
+</section>
 {% endblock %}

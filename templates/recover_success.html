@@ -1,12 +1,17 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="login-container text-center">
-    <h2 class="text-2xl font-semibold mb-4">✅ Доступ восстановлен</h2>
-    <p class="mb-4 text-gray-700">Используйте данные ниже для входа:</p>
-    <div class="bg-gray-100 px-4 py-3 rounded mb-4">
-        <strong>Логин:</strong> {{ username }}<br>
-        <strong>Пароль:</strong> {{ password }}
+<div class="auth-shell">
+    <div class="auth-card text-center">
+        <span class="badge">{{ _('Доступ восстановлен') }}</span>
+        <h2>{{ _('Доступ восстановлен') }}</h2>
+        <p class="auth-subtitle">{{ _('Используй эти данные для входа в админку. После входа лучше сразу сменить пароль в настройках.') }}</p>
+        <div class="panel">
+            <p><strong>{{ _('Логин:') }}</strong> {{ username }}</p>
+            <p><strong>{{ _('Пароль:') }}</strong> {{ password }}</p>
+        </div>
+        <div class="form-actions" style="justify-content: center;">
+            <a href="/login" class="btn-primary">{{ _('Перейти ко входу') }}</a>
+        </div>
     </div>
-    <a href="/login" class="bg-blue-600 text-white px-4 py-2 rounded">Перейти к входу</a>
 </div>
 {% endblock %}

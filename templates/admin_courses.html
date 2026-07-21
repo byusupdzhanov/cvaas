@@ -1,26 +1,63 @@
 {% extends "admin_base.html" %}
 {% block content %}
-<h2>Курсы и повышение квалификации</h2>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ _('Курсы') }}</h1>
+        <p class="page-subtitle">{{ _('Добавляй только то, что реально усиливает позиционирование и подтверждает специализацию.') }}</p>
+    </div>
+</div>
 
-<form action="/admin/courses/add" method="post">
-    <label>Название:</label><br>
-    <input name="title"><br>
-    <label>Организация:</label><br>
-    <input name="organization"><br>
-    <label>Год окончания:</label><br>
-<select name="year">
-    {% for y in range(2000, 2031) %}
-        <option value="{{ y }}">{{ y }}</option>
-    {% endfor %}
-</select><br>
+<section class="panel">
+    <h2 class="panel-title">{{ _('Добавить курс') }}</h2>
+    <form action="/admin/courses/add" method="post">
+        <div class="field-grid">
+            <div class="field">
+                <label for="course-title">{{ _('Название') }}</label>
+                <input id="course-title" name="title">
+            </div>
+            <div class="field">
+                <label for="course-organization">{{ _('Организация') }}</label>
+                <input id="course-organization" name="organization">
+            </div>
+            <div class="field">
+                <label for="course-year">{{ _('Год окончания') }}</label>
+                <select id="course-year" name="year">
+                    {% for y in range(2000, 2031) %}
+                        <option value="{{ y }}">{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">{{ _('Добавить курс') }}</button>
+        </div>
+    </form>
+</section>
 
-    <input type="submit" value="Добавить">
-</form>
-
-<ul>
-    {% for course in courses %}
-    <li><strong>{{ course.title }}</strong> — {{ course.organization }} ({{ course.year }}) —
-        <a href="/admin/courses/delete/{{ course.id }}">Удалить</a></li>
-    {% endfor %}
-</ul>
+<section class="panel">
+    <div class="panel-title-row">
+        <h2 class="panel-title">{{ _('Список курсов') }}</h2>
+        <span class="badge badge-neutral">{{ courses|length }} шт.</span>
+    </div>
+    <ul class="stack-list">
+        {% for course in courses %}
+            <li>
+                <div class="stack-list-item-head">
+                    <div>
+                        <p class="stack-list-item-title">{{ course.title }}</p>
+                        <p class="stack-list-item-subtitle">{{ course.organization }}</p>
+                    </div>
+                    <div class="stack-actions">
+                        <span class="badge badge-neutral">{{ course.year }}</span>
+                        <form method="post" action="/admin/courses/delete/{{ course.id }}">
+                            <button type="submit" class="link-button">{{ _('Удалить') }}</button>
+                        </form>
+                    </div>
+                </div>
+            </li>
+        {% else %}
+            <li><p class="stack-list-item-copy">{{ _('Пока пусто.') }}</p></li>
+        {% endfor %}
+    </ul>
+</section>
 {% endblock %}
