@@ -28,8 +28,12 @@ resume.db
 .DS_Store
 Thumbs.db
 
-# Static uploads
+# Runtime uploads
 static/uploads/
+
+# OS noise inside tracked static folders
+static/.DS_Store
+docs/.DS_Store
 
 # Logs
 *.log
@@ -37,6 +41,9 @@ static/uploads/
 # Exported resumes
 resume_*.json
 *.bak.json
+
+# Local planning / notes
+.plan.md
 
 # Alembic cache
 alembic/__pycache__/

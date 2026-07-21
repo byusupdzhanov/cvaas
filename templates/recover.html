@@ -1,23 +1,32 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="login-container">
-    <h2 class="text-2xl font-semibold mb-4 text-center">🔐 Восстановление доступа</h2>
-    {% if error %}
-    <div class="bg-red-100 text-red-700 px-4 py-2 rounded mb-4 text-sm text-center">
-        {{ error }}
+<div class="auth-shell">
+    <div class="auth-card">
+        <span class="badge badge-neutral">{{ _('Восстановление доступа') }}</span>
+        <h2>{{ _('Восстановление доступа') }}</h2>
+        <p class="auth-subtitle">{{ _('Ответь на контрольный вопрос и подтверди 2FA-код, если она включена. После этого система сгенерирует новый пароль.') }}</p>
+
+        {% if error %}
+            <div class="alert-error">{{ error }}</div>
+        {% endif %}
+
+        <form method="post" action="/recover">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="field">
+                <label for="answer">{{ question or "Место рождения?" }}</label>
+                <input type="text" id="answer" name="answer" required>
+            </div>
+
+            <div class="field">
+                <label for="totp">{{ _('Код 2FA из приложения') }}</label>
+                <input type="text" id="totp" name="totp" required>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn-primary">{{ _('Восстановить доступ') }}</button>
+                <a href="/login" class="btn-secondary">{{ _('Назад ко входу') }}</a>
+            </div>
+        </form>
     </div>
-    {% endif %}
-    <form method="post" action="/recover" class="space-y-4">
-        <label for="answer" class="block text-sm font-medium">
-            {{ question or "Место рождения?" }}
-        </label>
-        
-        <input type="text" id="answer" name="answer" class="w-full border rounded px-3 py-2" required>
-
-        <label for="totp" class="block text-sm font-medium">Код 2FA из приложения</label>
-        <input type="text" id="totp" name="totp" class="w-full border rounded px-3 py-2" required>
-
-        <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded">Восстановить</button>
-    </form>
 </div>
 {% endblock %}

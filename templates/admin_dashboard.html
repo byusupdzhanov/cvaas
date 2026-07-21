@@ -1,24 +1,143 @@
 {% extends "admin_base.html" %}
 {% block content %}
-<h2>📊 Панель управления</h2>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ _('Дашборд') }}</h1>
+        <p class="page-subtitle">{{ _('Быстрый срез по наполнению резюме и состоянию контента. Без лишнего визуального шума, с акцентом на действия.') }}</p>
+    </div>
+    <div class="page-meta">
+        {% if resume_updated %}
+            {{ _('Последнее обновление') }}<br>{{ resume_updated.strftime('%d.%m.%Y %H:%M') }}
+        {% else %}
+            {{ _('Резюме еще не обновлялось') }}
+        {% endif %}
+    </div>
+</div>
 
-<p>Добро пожаловать! Ниже — краткая сводка по вашему резюме:</p>
+<section class="panel dashboard-readiness-panel">
+    <div class="panel-title-row">
+        <div>
+            <h2 class="panel-title">{{ _('Готовность резюме') }}</h2>
+            <p class="helper">{{ _('Показывает, хватает ли данных для уверенной публикации и что еще стоит добить.') }}</p>
+        </div>
+        <span class="badge {% if readiness['is_ready'] %}badge-success{% else %}badge-neutral{% endif %}">{{ _(readiness['status_label']) }}</span>
+    </div>
 
-{% if resume_updated %}
-<p>📄 Резюме обновлено: {{ resume_updated.strftime('%-d %B %Y, %H:%M') }}</p>
-{% else %}
-<p>📄 Резюме ещё не обновлялось</p>
-{% endif %}
+    <div class="dashboard-score-card">
+        <div class="dashboard-score-main">
+            <div class="dashboard-score-ring" style="--score: {{ readiness['percent'] }};">
+                <strong>{{ readiness['percent'] }}%</strong>
+            </div>
+            <div class="dashboard-score-copy">
+                <p class="dashboard-score-title">{{ _('{completed} из {total} пунктов выполнено', completed=readiness['completed'], total=readiness['total']) }}</p>
+                <p class="helper">
+                    {% if info.get("visibility", "public") == "public" %}
+                        {{ _('Сейчас резюме видно по публичной ссылке.') }}
+                    {% else %}
+                        {{ _('Сейчас резюме скрыто. Публикацию можно включить в настройках.') }}
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+        <div class="dashboard-score-status">
+            <span class="dashboard-score-status-label">{{ _('Статус') }}</span>
+            <strong>{{ _(readiness['status_label']) }}</strong>
+        </div>
+    </div>
 
+    <div class="dashboard-checklist">
+        {% for item in readiness['items'] %}
+            <a href="{{ item.href }}" class="dashboard-check-item {% if item.done %}is-done{% else %}is-pending{% endif %}">
+                <span class="dashboard-check-icon">
+                    <i class="fa-solid {% if item.done %}fa-check{% else %}fa-arrow-right{% endif %}"></i>
+                </span>
+                <span>{{ _(item.label) }}</span>
+            </a>
+        {% endfor %}
+    </div>
+</section>
 
-<ul>
-    <li>🧠 Навыки: {{ stats.skills }}</li>
-    <li>🏢 Опыт работы: {{ stats.experience }}</li>
-    <li>🎓 Образование: {{ stats.education }}</li>
-    <li>📚 Курсы: {{ stats.courses }}</li>
-    <li>🌐 Языки: {{ stats.languages }}</li>
-    <li>💼 Проекты: {{ stats.projects }}</li>
-    <li>📜 Сертификаты: {{ stats.certificates }}</li>
-    <li>🗣 Рекомендации: {{ stats.recommendations }}</li>
-</ul>
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-label">{{ _('Навыки') }}</div>
+        <div class="stat-value">{{ stats.skills }}</div>
+        <div class="stat-icon"><i class="fa-solid fa-bolt"></i></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">{{ _('Опыт работы') }}</div>
+        <div class="stat-value">{{ stats.experience }}</div>
+        <div class="stat-icon"><i class="fa-solid fa-briefcase"></i></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">{{ _('Образование') }}</div>
+        <div class="stat-value">{{ stats.education }}</div>
+        <div class="stat-icon"><i class="fa-solid fa-graduation-cap"></i></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">{{ _('Курсы') }}</div>
+        <div class="stat-value">{{ stats.courses }}</div>
+        <div class="stat-icon"><i class="fa-solid fa-certificate"></i></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">{{ _('Языки') }}</div>
+        <div class="stat-value">{{ stats.languages }}</div>
+        <div class="stat-icon"><i class="fa-solid fa-language"></i></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">{{ _('Проекты') }}</div>
+        <div class="stat-value">{{ stats.projects }}</div>
+        <div class="stat-icon"><i class="fa-solid fa-diagram-project"></i></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">{{ _('Сертификаты') }}</div>
+        <div class="stat-value">{{ stats.certificates }}</div>
+        <div class="stat-icon"><i class="fa-solid fa-award"></i></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">{{ _('Рекомендации') }}</div>
+        <div class="stat-value">{{ stats.recommendations }}</div>
+        <div class="stat-icon"><i class="fa-solid fa-comments"></i></div>
+    </div>
+</div>
+
+<div class="grid-2 equal-panels" style="margin-top: 18px;">
+    <section class="panel">
+        <div class="panel-title-row">
+            <h2 class="panel-title">{{ _('Что мешает публикации') }}</h2>
+            <span class="badge">{{ readiness['blockers']|length }}</span>
+        </div>
+        {% if readiness['blockers'] %}
+            <div class="dashboard-mini-list panel-copy-grow">
+                {% for item in readiness['blockers'][:4] %}
+                    <a href="{{ item.href }}" class="dashboard-mini-link">{{ _(item.label) }}</a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="stack-list-item-copy panel-copy-grow">
+                {{ _('Базовая структура уже собрана. Дальше можно усиливать качество текста, проекты и финальную подачу.') }}
+            </div>
+        {% endif %}
+    </section>
+
+    <section class="panel">
+        <div class="panel-title-row">
+            <h2 class="panel-title">{{ _('Быстрые действия') }}</h2>
+            <span class="badge badge-neutral">Admin</span>
+        </div>
+        <div class="form-actions">
+            <a class="btn-secondary" href="{% if readiness['blockers'] %}{{ readiness['blockers'][0].href }}{% else %}/admin/info{% endif %}">
+                {% if readiness['blockers'] %}{{ _('Исправить главное узкое место') }}{% else %}{{ _('Редактировать инфо') }}{% endif %}
+            </a>
+            <a class="btn-secondary" href="/admin/add">{{ _('Добавить опыт') }}</a>
+            <a class="btn-secondary" href="/admin/settings">{{ _('Открыть настройки') }}</a>
+        </div>
+        {% if readiness['suggestions'] %}
+            <div class="dashboard-mini-list" style="margin-top: 14px;">
+                {% for suggestion in readiness['suggestions'] %}
+                    <div class="dashboard-mini-note">{{ _(suggestion) }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </section>
+</div>
 {% endblock %}

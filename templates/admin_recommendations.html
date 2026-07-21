@@ -1,27 +1,87 @@
 {% extends "admin_base.html" %}
 {% block content %}
-<h2>Рекомендации</h2>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ _('Рекомендации') }}</h1>
+        <p class="page-subtitle">{{ _('Короткие цитаты и подтверждения от людей, которым кандидат действительно есть что сказать.') }}</p>
+    </div>
+</div>
 
-<form action="/admin/recommendations/add" method="post">
-    <label>Имя:</label><br>
-    <input name="name"><br>
+<section class="panel">
+    <h2 class="panel-title">{{ _('Добавить рекомендацию') }}</h2>
+    <form action="/admin/recommendations/add" method="post">
+        <div class="field-grid">
+            <div class="field">
+                <label for="rec-name">{{ _('Имя') }}</label>
+                <input id="rec-name" name="name">
+            </div>
+            <div class="field">
+                <label for="rec-company">{{ _('Компания / должность') }}</label>
+                <input id="rec-company" name="company">
+            </div>
+            <div class="field field-full">
+                <label for="rec-quote">{{ _('Цитата') }}</label>
+                <textarea id="rec-quote" name="quote" rows="4"></textarea>
+            </div>
+            <div class="field field-full">
+                <label class="checkbox-row">
+                    <input type="checkbox" id="without_text" name="without_text">
+                    {{ _('Добавить рекомендацию без текста') }}
+                </label>
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">{{ _('Добавить рекомендацию') }}</button>
+        </div>
+    </form>
+</section>
 
-    <label>Компания / должность:</label><br>
-    <input name="company"><br>
+<section class="panel">
+    <div class="panel-title-row">
+        <h2 class="panel-title">{{ _('Список рекомендаций') }}</h2>
+        <span class="badge badge-neutral">{{ recommendations|length }} шт.</span>
+    </div>
+    <ul class="stack-list">
+        {% for r in recommendations %}
+            <li>
+                <div class="stack-list-item-head">
+                    <div>
+                        <p class="stack-list-item-title">{{ r.name }}</p>
+                        <p class="stack-list-item-subtitle">{{ r.company }}</p>
+                    </div>
+                    <div class="stack-actions">
+                        <form method="post" action="/admin/recommendations/move/{{ r.id }}/up">
+                            <button type="submit" class="link-button">{{ _('Выше') }}</button>
+                        </form>
+                        <form method="post" action="/admin/recommendations/move/{{ r.id }}/down">
+                            <button type="submit" class="link-button">{{ _('Ниже') }}</button>
+                        </form>
+                        <form method="post" action="/admin/recommendations/delete/{{ r.id }}">
+                            <button type="submit" class="link-button">{{ _('Удалить') }}</button>
+                        </form>
+                    </div>
+                </div>
+                {% if r.quote %}
+                    <p class="stack-list-item-copy">“{{ r.quote }}”</p>
+                {% else %}
+                    <p class="stack-list-item-copy">{{ _('Рекомендация добавлена без публичного текста.') }}</p>
+                {% endif %}
+            </li>
+        {% else %}
+            <li><p class="stack-list-item-copy">{{ _('Пока пусто.') }}</p></li>
+        {% endfor %}
+    </ul>
+</section>
 
-    <label>Цитата:</label><br>
-    <textarea name="quote" rows="3"></textarea><br>
+<script>
+    const withoutTextCheckbox = document.getElementById('without_text');
+    const quoteField = document.getElementById('rec-quote');
 
-    <input type="submit" value="Добавить">
-</form>
-
-<ul>
-    {% for r in recommendations %}
-    <li>
-        <blockquote>"{{ r.quote }}"</blockquote>
-        — {{ r.name }}, {{ r.company }}
-        <a href="/admin/recommendations/delete/{{ r.id }}">Удалить</a>
-    </li>
-    {% endfor %}
-</ul>
+    withoutTextCheckbox.addEventListener('change', () => {
+        quoteField.disabled = withoutTextCheckbox.checked;
+        if (withoutTextCheckbox.checked) {
+            quoteField.value = '';
+        }
+    });
+</script>
 {% endblock %}

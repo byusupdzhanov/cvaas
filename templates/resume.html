@@ -1,179 +1,360 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container">
-    {% if not preview %}
-    <div class="resume-toolbar">
-        <div class="dropdown">
-          <button class="dropbtn">💾 Сохранить ▾</button>
-          <div class="dropdown-content">
-            <a href="#" onclick="window.print()">📄 Как PDF</a>
-            <a href="#" onclick="window.print()">🖨️ Распечатать</a>
-          </div>
-        </div>
-    </div>
-    {% endif %}
-    {% if last_updated %}
-        <p class="resume-updated">📄 Резюме обновлено: {{ last_updated.strftime('%-d %B %Y') }}</p>
-    {% endif %}
-<div class="header">
-    {% if photo %}
-        <img src="/static/uploads/photo.jpg?{{ last_updated.timestamp() if last_updated else '' }}" alt="Фото">
-    {% endif %}
-    <div class="title">
-        <h1>{{ info.get("name") }}</h1>
-        <p>{{ info.get("position") }}</p>
-        <p>
-            <a href="mailto:{{ info.get('email') }}">{{ info.get("email") }}</a>
-            {% if info.get("hide_phone") != "1" and info.get("phone") %} | {{ info.get("phone") }}{% endif %}
-        </p>
-    </div>
-</div>
-
-<p style="color: #555;">
-  <strong>Местоположение:</strong>
-  {% if info.get("location") %}
-    <span class="text-muted">{{ info.get("location") }}</span>
-  {% endif %}
-</p>
-{% set status = {
-    'actively': "🔎 Активно ищу работу",
-    'passively': "👀 Рассматриваю предложения",
-    'none': "🙅‍♂️ Не ищу работу"
+{% set links = [
+    ('telegram', 'Telegram', 'fa-brands fa-telegram'),
+    ('github', 'GitHub', 'fa-brands fa-github'),
+    ('linkedin', 'LinkedIn', 'fa-brands fa-linkedin'),
+    ('whatsapp', 'WhatsApp', 'fa-brands fa-whatsapp'),
+    ('vkontakte', 'VK', 'fa-brands fa-vk'),
+    ('custom_link', 'Link', 'fa-solid fa-link')
+] %}
+{% set currency_symbols = {
+    'rub': '₽',
+    'usd': '$',
+    'eur': '€'
 } %}
-{% if info.get('job_search_status') %}
-  <p class="job-status" style="color: #555;">
-    <strong>Статус:</strong> {{ status[info.get('job_search_status')] }}
-  </p>
-{% endif %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
-    <h2 class="text-xl font-semibold mt-6 mb-2">Контакты</h2>
-<ul class="space-y-1 text-gray-700">
-    <li><i class="fas fa-envelope text-blue-600"></i> <a href="mailto:{{ info.get('email') }}">{{ info.get('email') }}</a></li>
+<div class="page-shell">
+    <div class="resume-page">
+        <aside class="resume-sidebar">
+            <div class="resume-photo-frame">
+                {% if photo %}
+                    <img src="/static/uploads/photo.jpg?{{ photo_version if photo_version else '' }}" alt="Фото">
+                {% else %}
+                    <div class="resume-photo-placeholder">
+                        <div>
+                            <strong>Photo</strong>
+                            <p>{{ _('Добавьте фото в админке, чтобы усилить первое впечатление.') }}</p>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
 
-    {% if info.get("hide_phone") != "1" and info.get("phone") %}
-    <li><i class="fas fa-phone text-green-600"></i> {{ info.get("phone") }}</li>
-    {% endif %}
+            <div>
+                <h1 class="resume-name">{{ info.get("name") or _('Ваше имя') }}</h1>
+                <p class="resume-role">{{ info.get("position") or _('Позиция') }}</p>
+            </div>
 
-    {% if info.get("telegram") %}
-    <li><i class="fab fa-telegram text-sky-500"></i> <a href="{{ info.get('telegram') }}">{{ info.get('telegram') }}</a></li>
-    {% endif %}
+            {% if info.get('job_search_status') %}
+                <div class="resume-status-badge">
+                    <i class="fa-solid fa-sparkles"></i>
+                    {{ _(status_label(info.get('job_search_status'))) }}
+                </div>
+            {% endif %}
 
-    {% if info.get("github") %}
-    <li><i class="fab fa-github text-black"></i> <a href="{{ info.get('github') }}" target="_blank">GitHub</a></li>
-    {% endif %}
+            <div class="resume-sidebar-section">
+                <span class="resume-sidebar-label">{{ _('Контакты') }}</span>
+                <div class="resume-contact-list">
+                    {% if info.get("email") %}
+                        <div class="resume-contact-item">
+                            <i class="fa-solid fa-envelope"></i>
+                            <div class="resume-sidebar-value"><a href="mailto:{{ info.get('email') }}">{{ info.get("email") }}</a></div>
+                        </div>
+                    {% endif %}
+                    {% if info.get("hide_phone") != "1" and info.get("phone") %}
+                        <div class="resume-contact-item">
+                            <i class="fa-solid fa-phone"></i>
+                            <div class="resume-sidebar-value">{{ info.get("phone") }}</div>
+                        </div>
+                    {% endif %}
+                    {% if info.get("location") %}
+                        <div class="resume-contact-item">
+                            <i class="fa-solid fa-location-dot"></i>
+                            <div class="resume-sidebar-value">{{ info.get("location") }}</div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
 
-    {% if info.get("linkedin") %}
-    <li><i class="fab fa-linkedin text-blue-700"></i> <a href="{{ info.get('linkedin') }}" target="_blank">LinkedIn</a></li>
-    {% endif %}
+            {% set ns = namespace(has_socials=false) %}
+            {% for key, label, icon in links %}
+                {% if info.get(key) %}
+                    {% set ns.has_socials = true %}
+                {% endif %}
+            {% endfor %}
+            {% if ns.has_socials %}
+                <div class="resume-sidebar-section">
+                    <span class="resume-sidebar-label">{{ _('Ссылки') }}</span>
+                    <div class="resume-socials">
+                        {% for key, label, icon in links %}
+                            {% if info.get(key) %}
+                                <a class="resume-social-link" href="{{ info.get(key) }}" target="_blank" rel="noreferrer">
+                                    <span><i class="{{ icon }}"></i> {{ label }}</span>
+                                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                </a>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
 
-    {% if info.get("whatsapp") %}
-    <li><i class="fab fa-whatsapp text-green-500"></i> <a href="{{ info.get('whatsapp') }}" target="_blank">WhatsApp</a></li>
-    {% endif %}
+            {% if languages %}
+                <div class="resume-sidebar-section">
+                    <span class="resume-sidebar-label">{{ _('Языки') }}</span>
+                    <div class="resume-language-list">
+                        {% for lang in languages %}
+                            <div class="resume-language-item">
+                                <span>{{ lang.name }}</span>
+                                <span class="resume-sidebar-value">{{ _(lang.level) }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        </aside>
 
-    {% if info.get("vkontakte") %}
-    <li><i class="fab fa-vk text-blue-500"></i> <a href="{{ info.get('vkontakte') }}" target="_blank">ВКонтакте</a></li>
-    {% endif %}
+        <section class="resume-main">
+            {% if not preview %}
+                <div class="resume-toolbar">
+                    <div class="dropdown">
+                        <button class="dropbtn">{{ _('Сохранить') }}</button>
+                        <div class="dropdown-content">
+                            <a href="#" onclick="return downloadResumePdf(event)">{{ _('Скачать как PDF') }}</a>
+                            <a href="#" onclick="return printResume(event)">{{ _('Открыть печать') }}</a>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
 
-    {% if info.get("custom_link") %}
-    <li><i class="fas fa-link text-gray-500"></i> <a href="{{ info.get('custom_link') }}" target="_blank">{{ info.get("custom_link") }}</a></li>
-    {% endif %}
-</ul>
+            {% if last_updated %}
+                <p class="resume-updated">{{ _('Резюме обновлено') }} {{ last_updated.strftime('%d.%m.%Y') }}</p>
+            {% endif %}
 
+            <div class="resume-hero{% if not info.get('salary_expectation') %} resume-hero--single{% endif %}">
+                <div class="resume-intro">
+                    <span class="resume-section-kicker">Profile</span>
+                    <h2>{{ info.get("position") or _('Резюме') }}</h2>
+                    <p>{{ info.get("about") or _('Добавьте блок «Обо мне», чтобы сформировать сильное первое впечатление.') }}</p>
+                </div>
+                {% if info.get("salary_expectation") %}
+                    <div class="resume-hero-card">
+                        <div class="resume-hero-meta">
+                            <span class="resume-section-kicker">Salary</span>
+                            <strong>{{ info.get("salary_expectation") }} {{ currency_symbols.get(info.get("salary_currency", "rub"), "₽") }}</strong>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
 
-    <h2 class="text-xl font-semibold mt-6 mb-2">Опыт работы</h2>
-    <span class="total-exp">Общий опыт: {{ total_experience }}</span>
+            <div class="resume-sections">
+                {% if experience %}
+                    <section class="resume-section">
+                        <div>
+                            <span class="resume-section-kicker">Experience</span>
+                            <h3>{{ _('Опыт работы') }}</h3>
+                        </div>
+                        {% if total_experience %}
+                            <span class="badge">{{ _('Общий опыт:') }} {{ total_experience }}</span>
+                        {% endif %}
+                        <div class="resume-timeline">
+                            {% for job in experience %}
+                                <article class="resume-timeline-item">
+                                    <div class="resume-timeline-head">
+                                        <div>
+                                            <p class="resume-item-title">{{ job.role }}</p>
+                                            <p class="resume-item-subtitle">{{ job.company }}{% if job.location %} · {{ job.location }}{% endif %}</p>
+                                        </div>
+                                        <span class="resume-item-meta">{{ job.period }}</span>
+                                    </div>
+                                    <div class="resume-description">{{ job.description | nl2br | safe }}</div>
+                                </article>
+                            {% endfor %}
+                        </div>
+                    </section>
+                {% endif %}
 
-{% for job in experience %}
-    <div class="mb-4">
-        <strong>{{ job.company }} ({{ job.period }})</strong><br>
-        {{ job.role }}<br>
-        <p>{{ job.description | nl2br | safe }}</p>
+                <div class="resume-grid-two">
+                    <div class="resume-section">
+                        {% if educations %}
+                            <section class="resume-section">
+                                <div>
+                                    <span class="resume-section-kicker">Education</span>
+                                    <h3>{{ _('Образование') }}</h3>
+                                </div>
+                                <div class="resume-list">
+                                    {% for edu in educations %}
+                                        <article class="resume-education-item">
+                                            <div class="resume-education-head">
+                                                <div>
+                                                    <p class="resume-item-title">{{ edu.institution }}</p>
+                                                    <p class="resume-item-subtitle">{{ edu.degree }}{% if edu.specialization %} · {{ edu.specialization }}{% endif %}</p>
+                                                </div>
+                                                <span class="resume-item-meta">{{ edu.start_date }} — {{ edu.end_date }}</span>
+                                            </div>
+                                        </article>
+                                    {% endfor %}
+                                </div>
+                            </section>
+                        {% endif %}
+
+                        {% if projects %}
+                            <section class="resume-section">
+                                <div>
+                                    <span class="resume-section-kicker">Projects</span>
+                                    <h3>{{ _('Проекты') }}</h3>
+                                </div>
+                                <div class="resume-list">
+                                    {% for project in projects %}
+                                        <article class="resume-project-item">
+                                            <div class="resume-project-head">
+                                                <div>
+                                                    <p class="resume-item-title">{{ project.title }}</p>
+                                                    {% if project.stack %}
+                                                        <p class="resume-item-subtitle">{{ project.stack }}</p>
+                                                    {% endif %}
+                                                </div>
+                                                {% if project.link %}
+                                                    <a class="resume-item-meta" href="{{ project.link }}" target="_blank" rel="noreferrer">{{ _('Открыть') }}</a>
+                                                {% endif %}
+                                            </div>
+                                            <div class="resume-description">{{ project.description }}</div>
+                                        </article>
+                                    {% endfor %}
+                                </div>
+                            </section>
+                        {% endif %}
+                    </div>
+
+                    <div class="resume-section">
+                        {% if skills %}
+                            <section class="resume-section">
+                                <div>
+                                    <span class="resume-section-kicker">Skills</span>
+                                    <h3>{{ _('Навыки') }}</h3>
+                                </div>
+                                <div class="resume-tags">
+                                    {% for s in skills %}
+                                        <span class="resume-skill-pill">
+                                            <span>{{ s.name }}</span>
+                                            <span class="resume-skill-level" aria-label="Уровень навыка {{ s.level or 3 }} из 5">
+                                                {% for step in range(1, 6) %}
+                                                    <span class="{% if step <= (s.level or 3) %}is-active{% endif %}"></span>
+                                                {% endfor %}
+                                            </span>
+                                        </span>
+                                    {% endfor %}
+                                </div>
+                            </section>
+                        {% endif %}
+
+                        {% if courses %}
+                            <section class="resume-section">
+                                <div>
+                                    <span class="resume-section-kicker">Courses</span>
+                                    <h3>{{ _('Курсы') }}</h3>
+                                </div>
+                                <div class="resume-list">
+                                    {% for course in courses %}
+                                        <article class="resume-card resume-certificate-item">
+                                            <div class="resume-certificate-head">
+                                                <div>
+                                                    <p class="resume-item-title">{{ course.title }}</p>
+                                                    <p class="resume-item-subtitle">{{ course.organization }}</p>
+                                                </div>
+                                                <span class="resume-item-meta">{{ course.year }}</span>
+                                            </div>
+                                        </article>
+                                    {% endfor %}
+                                </div>
+                            </section>
+                        {% endif %}
+
+                        {% if certificates %}
+                            <section class="resume-section">
+                                <div>
+                                    <span class="resume-section-kicker">Certificates</span>
+                                    <h3>{{ _('Сертификаты') }}</h3>
+                                </div>
+                                <div class="resume-list">
+                                    {% for c in certificates %}
+                                        <article class="resume-certificate-item">
+                                            <p class="resume-item-title">{{ c.title }}</p>
+                                            <p class="resume-item-subtitle">{{ c.issuer }}</p>
+                                            <div class="resume-timeline-head">
+                                                <span class="resume-item-meta">{{ c.year }}</span>
+                                                {% if c.link %}
+                                                    <a class="badge badge-neutral" href="{{ c.link }}" target="_blank" rel="noreferrer">{{ _('Ссылка') }}</a>
+                                                {% elif c.file_path %}
+                                                    <a class="badge badge-neutral" href="{{ c.file_path }}" target="_blank" rel="noreferrer">{{ _('Скачать') }}</a>
+                                                {% endif %}
+                                            </div>
+                                        </article>
+                                    {% endfor %}
+                                </div>
+                            </section>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if recommendations %}
+                    <section class="resume-section resume-section-recommendations">
+                        <div>
+                            <span class="resume-section-kicker">Recommendations</span>
+                            <h3>{{ _('Рекомендации') }}</h3>
+                        </div>
+                        <div class="resume-list">
+                            {% for r in recommendations %}
+                                <article class="resume-recommendation-item">
+                                    {% if r.quote %}
+                                        <p class="resume-quote">“{{ r.quote }}”</p>
+                                    {% endif %}
+                                    <div class="resume-recommendation-meta">{{ r.name }}, {{ r.company }}</div>
+                                </article>
+                            {% endfor %}
+                        </div>
+                    </section>
+                {% endif %}
+
+                <div class="resume-footer footer-print">
+                    {{ _('Создано через CVaaS') }} v{{ version }}
+                </div>
+            </div>
+        </section>
     </div>
-{% endfor %}
-
-<h2 class="text-xl font-semibold mt-6 mb-2">Образование</h2>
-<ul>
-    {% for edu in educations %}
-    <li>
-        <strong>{{ edu.degree }}</strong> — {{ edu.institution }}<br>
-        {{ edu.specialization }} ({{ edu.start_date }} — {{ edu.end_date }})
-    </li>
-    {% endfor %}
-</ul>
-
-<h2 class="text-xl font-semibold mt-6 mb-2">Курсы и повышение квалификации</h2>
-<ul>
-    {% for course in courses %}
-    <li><strong>{{ course.title }}</strong> — {{ course.organization }} ({{ course.year }})</li>
-    {% endfor %}
-</ul>
-
-{% if certificates %}
-<h2 class="text-xl font-semibold mt-6 mb-2">Сертификаты</h2>
-<ul class="space-y-2">
-    {% for c in certificates %}
-    <li>
-        <strong>{{ c.title }}</strong> — {{ c.issuer }}, {{ c.year }}
-        {% if c.link %}
-            — <a href="{{ c.link }}" target="_blank">Ссылка</a>
-        {% elif c.file_path %}
-            — <a href="{{ c.file_path }}" target="_blank">Скачать</a>
-        {% endif %}
-    </li>
-    {% endfor %}
-</ul>
-{% endif %}
-
-<h2 class="text-xl font-semibold mt-6 mb-2">Навыки</h2>
-<div class="flex flex-wrap gap-2 text-sm">
-    {% for s in skills %}
-        <span class="tag">{{ s.name }}</span>
-    {% endfor %}
 </div>
+<script>
+    async function downloadResumePdf(event) {
+        event.preventDefault();
 
+        const page = document.querySelector('.page-shell');
+        if (!page || typeof html2pdf === 'undefined') {
+            return false;
+        }
 
-{% if projects %}
-<h2 class="text-xl font-semibold mt-6 mb-2">Проекты</h2>
-<ul>
-    {% for project in projects %}
-    <li>
-        <strong>{{ project.title }}</strong>{% if project.link %} — <a href="{{ project.link }}" target="_blank">ссылка</a>{% endif %}<br>
-        {{ project.description }}<br>
-        <em>{{ project.stack }}</em>
-    </li>
-    {% endfor %}
-</ul>
-{% endif %}
+        document.body.classList.add('resume-export-mode');
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
-{% if recommendations %}
-<h2 class="text-xl font-semibold mt-6 mb-2">Рекомендации</h2>
-<ul class="space-y-2">
-    {% for r in recommendations %}
-    <li>
-        <blockquote class="italic text-gray-600">"{{ r.quote }}"</blockquote>
-        <div class="text-sm text-gray-500">— {{ r.name }}, {{ r.company }}</div>
-    </li>
-    {% endfor %}
-</ul>
-{% endif %}
+        const fileNameBase = (document.querySelector('.resume-name')?.textContent || 'resume').trim().replace(/\s+/g, '_');
 
+        try {
+            await html2pdf().set({
+                margin: [8, 8, 8, 8],
+                filename: `${fileNameBase || 'resume'}_CVaaS_0.2.0.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak: { mode: ['css', 'legacy'] },
+            }).from(page).save();
+        } finally {
+            document.body.classList.remove('resume-export-mode');
+        }
 
-<h2 class="text-xl font-semibold mt-6 mb-2">Языки</h2>
-<ul>
-    {% for lang in languages %}
-    <li>{{ lang.name }} — {{ lang.level }}</li>
-    {% endfor %}
-</ul>
+        return false;
+    }
 
+    function printResume(event) {
+        event.preventDefault();
+        document.body.classList.add('resume-export-mode');
 
-<h2 class="text-xl font-semibold mt-6 mb-2">Обо мне</h2>
-<p>{{ info.get("about") | nl2br | safe }}</p>
+        const cleanup = () => {
+            document.body.classList.remove('resume-export-mode');
+            window.removeEventListener('afterprint', cleanup);
+        };
 
-<div class="footer-print">
-    <hr style="margin-top: 40px;">
-    <p style="font-size: 12px; color: #555;">Создано через CVaaS v {{ version }} — cvaas.tech</p>
-</div>
-
-</div>
+        window.addEventListener('afterprint', cleanup);
+        window.print();
+        return false;
+    }
+</script>
 {% endblock %}
-

@@ -1,0 +1,13 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">CVaaS app icon</title>
+  <desc id="desc">A rounded-square app icon containing the CV monogram and modular publishing blocks.</desc>
+  <rect x="32" y="32" width="448" height="448" rx="92" fill="#F7F2E8"/>
+  <rect x="32" y="32" width="448" height="448" rx="92" stroke="#DDD5C8" stroke-width="2"/>
+
+  <g transform="translate(102 104)">
+    <path fill="#1B1F24" fill-rule="evenodd" clip-rule="evenodd" d="M215 0H123C55.068 0 0 55.068 0 123V164C0 231.932 55.068 287 123 287H194L163 233H123C84.3401 233 53 201.66 53 163V124C53 85.3401 84.3401 54 123 54H215V0Z"/>
+    <path fill="#1B1F24" d="M133 154H269L188 295L147.5 224.5L107 154H133Z"/>
+    <rect x="234" width="67" height="67" rx="3" fill="#D7FF3F"/>
+    <rect x="234" y="86" width="67" height="67" rx="3" fill="#1B1F24"/>
+  </g>
+</svg>

@@ -1,14 +1,39 @@
 {% extends "admin_base.html" %}
 {% block content %}
-<h2>Опыт работы</h2>
-<a href="/admin/add">➕ Добавить опыт</a>
-<ul>
-    {% for job in experiences %}
-    <li>
-        <strong>{{ job.company }}</strong> — {{ job.role }} ({{ job.period }})<br>
-        <a href="/admin/edit/{{ job.id }}">✏️ Редактировать</a> |
-        <a href="/admin/delete/{{ job.id }}">🗑 Удалить</a>
-    </li>
-    {% endfor %}
-</ul>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ _('Опыт работы') }}</h1>
+        <p class="page-subtitle">{{ _('Резервный экран списка опыта. Основной сценарий остается на странице добавления и редактирования записей.') }}</p>
+    </div>
+    <div class="form-actions">
+        <a href="/admin/add" class="btn-primary">{{ _('Добавить запись') }}</a>
+    </div>
+</div>
+
+<section class="panel">
+    <div class="panel-title-row">
+        <h2 class="panel-title">{{ _('Все записи') }}</h2>
+        <span class="badge badge-neutral">{{ experiences|length }} шт.</span>
+    </div>
+    <ul class="stack-list">
+        {% for job in experiences %}
+            <li>
+                <div class="stack-list-item-head">
+                    <div>
+                        <p class="stack-list-item-title">{{ job.role }}</p>
+                        <p class="stack-list-item-subtitle">{{ job.company }} · {{ job.period }}</p>
+                    </div>
+                    <div class="stack-actions">
+                        <a href="/admin/edit/{{ job.id }}">{{ _('Редактировать') }}</a>
+                        <form method="post" action="/admin/delete/{{ job.id }}">
+                            <button type="submit" class="link-button">{{ _('Удалить') }}</button>
+                        </form>
+                    </div>
+                </div>
+            </li>
+        {% else %}
+            <li><p class="stack-list-item-copy">{{ _('Пока нет записей об опыте.') }}</p></li>
+        {% endfor %}
+    </ul>
+</section>
 {% endblock %}

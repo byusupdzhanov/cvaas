@@ -3,13 +3,11 @@ from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, Stre
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from .database import SessionLocal, pwd_context
-from passlib import hash
 from .auth import require_login
 from .models import Experience, Course, Skill, Info, Education, Language, Project, Certificate, Recommendation, Admin
 from fastapi.templating import Jinja2Templates
 templates = Jinja2Templates(directory="templates")
 from datetime import datetime
-import shutil
 import os
 import tempfile
 import json
@@ -19,8 +17,217 @@ from pathlib import Path
 import pyotp 
 import secrets
 from jinja2 import pass_context
+from .security import (
+    ALLOWED_SALARY_CURRENCIES,
+    MAX_CERTIFICATE_BYTES,
+    MAX_IMPORT_JSON_BYTES,
+    MAX_PHOTO_BYTES,
+    enforce_csrf_protection,
+    get_csrf_token,
+    normalize_text,
+    normalize_url,
+    read_limited_upload,
+    save_certificate_file,
+    save_profile_photo,
+)
+from .i18n import get_locale_from_db, get_locale_from_info, normalize_locale, translate
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(enforce_csrf_protection)])
+
+MONTH_OPTIONS = [
+    ("01", "Январь"),
+    ("02", "Февраль"),
+    ("03", "Март"),
+    ("04", "Апрель"),
+    ("05", "Май"),
+    ("06", "Июнь"),
+    ("07", "Июль"),
+    ("08", "Август"),
+    ("09", "Сентябрь"),
+    ("10", "Октябрь"),
+    ("11", "Ноябрь"),
+    ("12", "Декабрь"),
+]
+
+YEAR_OPTIONS = [str(year) for year in range(datetime.now().year + 2, 1969, -1)]
+
+
+def build_year_options(start_year: int = 1970):
+    return [str(year) for year in range(datetime.now().year + 2, start_year - 1, -1)]
+
+
+def split_year_month(value: str | None):
+    if not value:
+        return "", ""
+
+    normalized = value.strip()
+
+    if len(normalized) == 7 and normalized[4] == "-":
+        year, month = normalized.split("-")
+        return year, month
+
+    if len(normalized) == 7 and normalized[2] == ".":
+        month, year = normalized.split(".")
+        return year, month
+
+    return "", ""
+
+
+def combine_year_month(year: str | None, month: str | None, *, required: bool = False):
+    year_value = (year or "").strip()
+    month_value = (month or "").strip()
+
+    if not year_value and not month_value and not required:
+        return None
+
+    if not year_value or not month_value:
+        raise ValueError("Укажите месяц и год")
+
+    datetime.strptime(f"{year_value}-{month_value}", "%Y-%m")
+    return f"{year_value}-{month_value}"
+
+
+def format_period(start_value: str, end_value: str | None = None, current: bool = False):
+    start_fmt = datetime.strptime(start_value, "%Y-%m").strftime("%m.%Y")
+    if current:
+        return f"{start_fmt} — н.в."
+    if end_value:
+        end_fmt = datetime.strptime(end_value, "%Y-%m").strftime("%m.%Y")
+        return f"{start_fmt} — {end_fmt}"
+    return start_fmt
+
+
+def get_next_position(db: Session, model):
+    current = db.query(func.max(model.position)).scalar()
+    return (current or 0) + 1
+
+
+def move_item(db: Session, model, item_id: int, direction: str):
+    item = db.query(model).filter_by(id=item_id).first()
+    if not item:
+        return False
+
+    comparator = model.position < item.position if direction == "up" else model.position > item.position
+    order_clause = model.position.desc() if direction == "up" else model.position.asc()
+
+    swap_target = (
+        db.query(model)
+        .filter(comparator)
+        .order_by(order_clause)
+        .first()
+    )
+
+    if not swap_target:
+        return False
+
+    item.position, swap_target.position = swap_target.position, item.position
+    db.commit()
+    return True
+
+
+def build_dashboard_readiness(info: dict[str, str], stats: dict[str, int]):
+    profile_checks = [
+        {
+            "label": "Имя и позиция заполнены",
+            "done": bool(info.get("name") and info.get("position")),
+            "href": "/admin/info",
+        },
+        {
+            "label": "Добавлено краткое описание профиля",
+            "done": bool(info.get("about") and len(info.get("about", "").strip()) >= 80),
+            "href": "/admin/info",
+        },
+        {
+            "label": "Есть минимум один контакт",
+            "done": any(info.get(key) for key in ["email", "phone", "telegram", "linkedin", "github", "whatsapp"]),
+            "href": "/admin/info",
+        },
+        {
+            "label": "Загружена фотография",
+            "done": Path("static/uploads/photo.jpg").exists(),
+            "href": "/admin/info",
+        },
+        {
+            "label": "Добавлен опыт работы",
+            "done": stats["experience"] > 0,
+            "href": "/admin/add",
+        },
+        {
+            "label": "Добавлены ключевые навыки",
+            "done": stats["skills"] >= 3,
+            "href": "/admin/skills",
+        },
+        {
+            "label": "Заполнен хотя бы один дополнительный блок",
+            "done": any(stats[key] > 0 for key in ["projects", "certificates", "recommendations", "courses"]),
+            "href": "/admin/projects",
+        },
+        {
+            "label": "Резюме открыто для публикации",
+            "done": info.get("visibility", "public") == "public",
+            "href": "/admin/settings",
+        },
+    ]
+
+    completed = sum(1 for item in profile_checks if item["done"])
+    total = len(profile_checks)
+    percent = int(round((completed / total) * 100)) if total else 0
+
+    blockers = [item for item in profile_checks if not item["done"]]
+    suggestions = []
+
+    if stats["experience"] and stats["projects"] == 0:
+        suggestions.append("Добавь проекты: они усиливают опыт и показывают конкретный результат.")
+    if stats["skills"] and stats["languages"] == 0:
+        suggestions.append("Если язык правда есть, заполни блок языков: рекрутеры это быстро считывают.")
+    if info.get("salary_expectation") and not info.get("location"):
+        suggestions.append("Есть зарплатная вилка, но нет географии. Добавь город или формат работы.")
+    if stats["recommendations"] == 0:
+        suggestions.append("Рекомендации не обязательны, но одна сильная рекомендация повышает доверие.")
+
+    is_ready = completed >= 6 and stats["experience"] > 0 and stats["skills"] >= 3 and bool(info.get("about"))
+    status_label = "Готово к публикации" if is_ready else "Нужно допилить"
+
+    return {
+        "items": profile_checks,
+        "completed": completed,
+        "total": total,
+        "percent": percent,
+        "is_ready": is_ready,
+        "status_label": status_label,
+        "blockers": blockers,
+        "suggestions": suggestions[:3],
+    }
+
+
+def build_publication_state(info: dict[str, str], stats: dict[str, int]):
+    visibility = info.get("visibility", "public")
+    is_public = visibility == "public"
+    hidden_message = info.get("hidden_message", "").strip()
+
+    blockers = []
+    if not info.get("name") or not info.get("position"):
+        blockers.append("Не заполнены имя или позиция.")
+    if not info.get("about"):
+        blockers.append("Нет блока «Обо мне».")
+    if stats["experience"] == 0:
+        blockers.append("Не добавлен опыт работы.")
+    if not any(info.get(key) for key in ["email", "phone", "telegram", "linkedin", "github", "whatsapp"]):
+        blockers.append("Не добавлен ни один контакт.")
+
+    return {
+        "is_public": is_public,
+        "status_label": "Опубликовано" if is_public else "Скрыто",
+        "status_copy": (
+            "Посетитель видит публичное резюме по ссылке."
+            if is_public
+            else "Посетитель видит сообщение о том, что резюме скрыто."
+        ),
+        "hidden_message": hidden_message or "Резюме временно скрыто владельцем.",
+        "blockers": blockers,
+        "has_blockers": len(blockers) > 0,
+    }
+
 
 def get_db():
     db = SessionLocal()
@@ -28,6 +235,40 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def set_flash(request: Request, message: str, kind: str = "success"):
+    request.session["_admin_flash"] = {
+        "message": message,
+        "kind": kind,
+    }
+
+
+def consume_flash(request: Request):
+    return request.session.pop("_admin_flash", None)
+
+
+def admin_template(
+    request: Request,
+    template_name: str,
+    context: dict | None = None,
+    status_code: int = 200,
+):
+    db = SessionLocal()
+    try:
+        locale = get_locale_from_db(db)
+    finally:
+        db.close()
+    payload = {
+        "request": request,
+        "flash": consume_flash(request),
+        "csrf_token": get_csrf_token(request),
+        "locale": locale,
+        "_": lambda text, **kwargs: translate(locale, text, **kwargs),
+    }
+    if context:
+        payload.update(context)
+    return templates.TemplateResponse(template_name, payload, status_code=status_code)
 
 @pass_context
 def nl2br(ctx, value):
@@ -44,6 +285,7 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
 
+    info = {item.field: item.value for item in db.query(Info).all()}
     stats = {
         "skills": db.query(Skill).count(),
         "experience": db.query(Experience).count(),
@@ -63,11 +305,13 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
             latest_dates.append(dt)
 
     resume_updated = max(latest_dates) if latest_dates else None
+    readiness = build_dashboard_readiness(info, stats)
 
-    return templates.TemplateResponse("admin_dashboard.html", {
-        "request": request,
+    return admin_template(request, "admin_dashboard.html", {
         "stats": stats,
-        "resume_updated": resume_updated
+        "resume_updated": resume_updated,
+        "readiness": readiness,
+        "info": info,
     })
 
 @router.post("/admin/reset")
@@ -79,6 +323,7 @@ def reset_resume(request: Request, db: Session = Depends(get_db)):
         db.query(model).delete()
 
     db.commit()
+    set_flash(request, "Резюме полностью обнулено.")
     return RedirectResponse(url="/admin", status_code=303)
 
 @router.get("/admin/backup")
@@ -140,9 +385,7 @@ def export_json(request: Request, db: Session = Depends(get_db)):
 def show_import_page(request: Request, db: Session = Depends(get_db)):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
-    return templates.TemplateResponse("admin_import_json.html", {
-        "request": request
-    })
+    return admin_template(request, "admin_import_json.html")
 
 
 @router.post("/admin/import-json")
@@ -155,11 +398,12 @@ async def import_json(
     if auth_redirect: return auth_redirect
 
     try:
-        content = await json_file.read()
-        data = json.loads(content)
+        if not (json_file.filename or "").lower().endswith(".json"):
+            raise ValueError
+        content = await read_limited_upload(json_file, MAX_IMPORT_JSON_BYTES)
+        data = json.loads(content.decode("utf-8"))
     except Exception:
-        return templates.TemplateResponse("admin_import_json.html", {
-            "request": request,
+        return admin_template(request, "admin_import_json.html", {
             "json_error": "Невалидный JSON-файл"
         })
 
@@ -176,14 +420,14 @@ async def import_json(
 
     allowed = {
         "info": ["field", "value"],
-        "skills": ["name"],
-        "experience": ["company", "role", "period", "description"],
+        "skills": ["name", "level"],
+        "experience": ["company", "location", "role", "period", "description", "start_date", "end_date"],
         "courses": ["title", "organization", "year"],
-        "educations": ["degree", "institution", "start_date", "end_date", "specialization"],
+        "educations": ["degree", "institution", "location", "start_date", "end_date", "specialization"],
         "languages": ["name", "level"],
-        "projects": ["title", "description", "link", "stack"],
+        "projects": ["title", "description", "link", "stack", "position"],
         "certificates": ["title", "issuer", "year", "file_path", "link"],
-        "recommendations": ["name", "company", "quote"]
+        "recommendations": ["name", "company", "quote", "position"]
     }
 
     models = {
@@ -213,8 +457,7 @@ async def import_json(
 
     db.commit()
 
-    return templates.TemplateResponse("admin_import_json.html", {
-        "request": request,
+    return admin_template(request, "admin_import_json.html", {
         "json_success": "Резюме успешно импортировано"
     })
 
@@ -228,7 +471,7 @@ def delete_experience(request: Request, id: int = Form(...), db: Session = Depen
     if exp:
         db.delete(exp)
         db.commit()
-
+        set_flash(request, "Запись опыта удалена.")
     return RedirectResponse("/admin/experience", status_code=303)
 
 
@@ -241,9 +484,10 @@ def edit_experience_form(id: int, request: Request, db: Session = Depends(get_db
     exp = db.query(Experience).get(id)
     if not exp:
         return HTMLResponse(content="Не найдено", status_code=404)
-    return templates.TemplateResponse("admin_experience_edit.html", {
-        "request": request,
-        "exp": exp
+    return admin_template(request, "admin_experience_edit.html", {
+        "exp": exp,
+        "months": MONTH_OPTIONS,
+        "years": YEAR_OPTIONS,
     })
 
 @router.post("/admin/edit/{id}")
@@ -251,9 +495,12 @@ def edit_experience(
     id: int,
     request: Request,
     company: str = Form(...),
+    location: str = Form(""),
     role: str = Form(...),
-    start: str = Form(...),
-    end: str = Form(None),
+    start_month: str = Form(...),
+    start_year: str = Form(...),
+    end_month: str = Form(""),
+    end_year: str = Form(""),
     current: str = Form(None),
     description: str = Form(...),
     db: Session = Depends(get_db)
@@ -264,23 +511,23 @@ def edit_experience(
     if not exp:
         return HTMLResponse("Опыт не найден", status_code=404)
 
-    start_fmt = datetime.strptime(start, "%Y-%m").strftime("%m.%Y")
-    if current:
-        period = f"{start_fmt} — н.в."
-    elif end:
-        end_fmt = datetime.strptime(end, "%Y-%m").strftime("%m.%Y")
-        period = f"{start_fmt} — {end_fmt}"
-    else:
-        period = start_fmt
+    try:
+        start = combine_year_month(start_year, start_month, required=True)
+        end = None if current else combine_year_month(end_year, end_month)
+    except ValueError:
+        return HTMLResponse("Неверный формат даты", status_code=400)
+
+    period = format_period(start, end, bool(current))
 
     exp.company = company
+    exp.location = location
     exp.role = role
     exp.period = period
     exp.description = description
     exp.start_date = start
     exp.end_date = None if current else end
     db.commit()
-
+    set_flash(request, "Запись опыта обновлена.")
     return RedirectResponse(url="/admin/add", status_code=303)
 
 
@@ -291,35 +538,40 @@ def form_add_experience(request: Request, db: Session = Depends(get_db)):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
     experiences = db.query(Experience).order_by(Experience.start_date.desc()).all()
-    return templates.TemplateResponse("admin_experience_add.html", {
-        "request": request,
-        "experiences": experiences
+    return admin_template(request, "admin_experience_add.html", {
+        "experiences": experiences,
+        "months": MONTH_OPTIONS,
+        "years": YEAR_OPTIONS,
     })
 
 
 @router.post("/admin/add")
 def add_experience(request: Request,
     company: str = Form(...),
+    location: str = Form(""),
     role: str = Form(...),
-    start: str = Form(...),    
-    end: str = Form(None),     
+    start_month: str = Form(...),
+    start_year: str = Form(...),
+    end_month: str = Form(""),
+    end_year: str = Form(""),
     current: str = Form(None),
     description: str = Form(...),
     db: Session = Depends(get_db),
 ):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
-    start_fmt = datetime.strptime(start, "%Y-%m").strftime("%m.%Y")
-    if current:
-        period = f"{start_fmt} — н.в."
-    elif end:
-        end_fmt = datetime.strptime(end, "%Y-%m").strftime("%m.%Y")
-        period = f"{start_fmt} — {end_fmt}"
-    else:
-        period = start_fmt
+
+    try:
+        start = combine_year_month(start_year, start_month, required=True)
+        end = None if current else combine_year_month(end_year, end_month)
+    except ValueError:
+        return HTMLResponse("Неверный формат даты", status_code=400)
+
+    period = format_period(start, end, bool(current))
 
     exp = Experience(
     company=company,
+    location=location,
     role=role,
     period=period,
     description=description,
@@ -328,10 +580,11 @@ def add_experience(request: Request,
     )
     db.add(exp)
     db.commit()
+    set_flash(request, "Опыт работы добавлен.")
     return RedirectResponse(url="/admin/add", status_code=303)
 
 
-@router.get("/admin/delete/{id}")
+@router.post("/admin/delete/{id}")
 def delete_experience(request: Request, id: int, db: Session = Depends(get_db)):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
@@ -339,13 +592,22 @@ def delete_experience(request: Request, id: int, db: Session = Depends(get_db)):
     if exp:
         db.delete(exp)
         db.commit()
+        set_flash(request, "Запись опыта удалена.")
     return RedirectResponse(url="/admin/add", status_code=303)
 
 @router.get("/recover", response_class=HTMLResponse)
 def recover_form(request: Request, db: Session = Depends(get_db)):
     admin = db.query(Admin).first()
     question = admin.security_question if admin else "Где вы родились?"
-    return templates.TemplateResponse("recover.html", {"request": request, "question": question, "admin": admin})
+    locale = get_locale_from_db(db)
+    return templates.TemplateResponse("recover.html", {
+        "request": request,
+        "question": question,
+        "admin": admin,
+        "csrf_token": get_csrf_token(request),
+        "locale": locale,
+        "_": lambda text, **kwargs: translate(locale, text, **kwargs),
+    })
 
 @router.post("/recover", response_class=HTMLResponse)
 async def recover_post(
@@ -355,10 +617,15 @@ async def recover_post(
     db: Session = Depends(get_db)
 ):
     admin = db.query(Admin).first()
+    locale = get_locale_from_db(db)
     if not admin or not admin.security_answer or admin.security_answer.strip().lower() != answer.strip().lower():
         return templates.TemplateResponse("recover.html", {
             "request": request,
+            "csrf_token": get_csrf_token(request),
             "error": "Неверный ответ на контрольный вопрос"
+            ,
+            "locale": locale,
+            "_": lambda text, **kwargs: translate(locale, text, **kwargs),
         })
 
     if admin.twofa_enabled:
@@ -366,7 +633,11 @@ async def recover_post(
         if not totp_obj.verify(totp):
             return templates.TemplateResponse("recover.html", {
                 "request": request,
+                "csrf_token": get_csrf_token(request),
                 "error": "Неверный код 2FA"
+                ,
+                "locale": locale,
+                "_": lambda text, **kwargs: translate(locale, text, **kwargs),
             })
 
     new_password = secrets.token_urlsafe(10)
@@ -376,7 +647,9 @@ async def recover_post(
     return templates.TemplateResponse("recover_success.html", {
         "request": request,
         "username": admin.username,
-        "password": new_password
+        "password": new_password,
+        "locale": locale,
+        "_": lambda text, **kwargs: translate(locale, text, **kwargs),
     })
 
 @router.post("/admin/enable-2fa")
@@ -390,6 +663,7 @@ def enable_2fa(
 
     admin = db.query(Admin).first()
     if not admin or not admin.totp_secret:
+        set_flash(request, "Не удалось подготовить 2FA. Попробуй еще раз.", "error")
         return RedirectResponse("/admin/settings", status_code=303)
 
     totp = pyotp.TOTP(admin.totp_secret)
@@ -397,9 +671,11 @@ def enable_2fa(
     if totp.verify(code.strip()):
         admin.twofa_enabled = True
         db.commit()
+        set_flash(request, "Двухфакторная защита включена.")
         return RedirectResponse("/admin/settings", status_code=303)
     else:
-        return RedirectResponse("/admin/settings?error=invalid_2fa", status_code=303)
+        set_flash(request, "Неверный код 2FA. Попробуй еще раз.", "error")
+        return RedirectResponse("/admin/settings", status_code=303)
     
 @router.post("/admin/disable-2fa")
 def disable_2fa(request: Request, db: Session = Depends(get_db)):
@@ -411,8 +687,9 @@ def disable_2fa(request: Request, db: Session = Depends(get_db)):
         admin.twofa_enabled = False
         admin.totp_secret = None
         db.commit()
+        set_flash(request, "2FA отключена.")
 
-    return RedirectResponse("/admin/settings?disabled_2fa=true", status_code=303)
+    return RedirectResponse("/admin/settings", status_code=303)
 
 
 @router.get("/admin/courses", response_class=HTMLResponse)
@@ -420,8 +697,7 @@ def course_list(request: Request, db: Session = Depends(get_db)):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
     courses = db.query(Course).all()
-    return templates.TemplateResponse("admin_courses.html", {
-    "request": request,
+    return admin_template(request, "admin_courses.html", {
     "courses": courses,
     "range": range
 })
@@ -431,15 +707,7 @@ def course_list(request: Request, db: Session = Depends(get_db)):
 def course_form(request: Request):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
-    return """
-    <h2>Добавить курс</h2>
-    <form action="/admin/courses/add" method="post">
-        Название: <input name="title"><br>
-        Организация: <input name="organization"><br>
-        Год: <input name="year"><br>
-        <input type="submit" value="Добавить">
-    </form>
-    """
+    return RedirectResponse(url="/admin/courses", status_code=303)
 
 @router.post("/admin/courses/add")
 def add_course(request: Request, title: str = Form(...), organization: str = Form(...), year: str = Form(...), db: Session = Depends(get_db)):
@@ -448,9 +716,10 @@ def add_course(request: Request, title: str = Form(...), organization: str = For
     course = Course(title=title, organization=organization, year=year)
     db.add(course)
     db.commit()
+    set_flash(request, "Курс добавлен.")
     return RedirectResponse(url="/admin/courses", status_code=303)
 
-@router.get("/admin/courses/delete/{id}")
+@router.post("/admin/courses/delete/{id}")
 def delete_course(request: Request, id: int, db: Session = Depends(get_db)):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
@@ -458,6 +727,7 @@ def delete_course(request: Request, id: int, db: Session = Depends(get_db)):
     if course:
         db.delete(course)
         db.commit()
+        set_flash(request, "Курс удален.")
     return RedirectResponse(url="/admin/courses", status_code=303)
 
 @router.get("/admin/info", response_class=HTMLResponse)
@@ -465,7 +735,12 @@ def edit_info_page(request: Request, db: Session = Depends(get_db)):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
     infos = {i.field: i.value for i in db.query(Info).all()}
-    return templates.TemplateResponse("admin_info.html", {"request": request, "info": infos})
+    photo_path = Path("static/uploads/photo.jpg")
+    return admin_template(request, "admin_info.html", {
+        "info": infos,
+        "photo": photo_path.exists(),
+        "photo_version": int(photo_path.stat().st_mtime) if photo_path.exists() else None,
+    })
 
 
 from fastapi import File, UploadFile
@@ -476,6 +751,8 @@ async def update_info(
     name: str = Form(""),
     position: str = Form(""),
     location: str = Form(""),
+    salary_expectation: str = Form(""),
+    salary_currency: str = Form("rub"),
     email: str = Form(""),
     phone: str = Form(""),
     telegram: str = Form(""),
@@ -492,22 +769,29 @@ async def update_info(
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
 
-    fields = {
-        "name": name,
-        "position": position,
-        "email": email,
-        "phone": phone,
-        "telegram": telegram,
-        "about": about,
-        "github": github,
-        "linkedin": linkedin,
-        "whatsapp": whatsapp,
-        "vkontakte": vkontakte,
-        "custom_link": custom_link,
+    try:
+        salary_currency = salary_currency if salary_currency in ALLOWED_SALARY_CURRENCIES else "rub"
+        fields = {
+        "name": normalize_text(name, max_length=160),
+        "position": normalize_text(position, max_length=160),
+        "email": normalize_text(email, max_length=160),
+        "phone": normalize_text(phone, max_length=80),
+        "salary_expectation": normalize_text(salary_expectation, max_length=80),
+        "salary_currency": salary_currency,
+        "telegram": normalize_url(telegram) if telegram else "",
+        "about": normalize_text(about, max_length=4000),
+        "github": normalize_url(github) if github else "",
+        "linkedin": normalize_url(linkedin) if linkedin else "",
+        "whatsapp": normalize_url(whatsapp) if whatsapp else "",
+        "vkontakte": normalize_url(vkontakte) if vkontakte else "",
+        "custom_link": normalize_url(custom_link) if custom_link else "",
         "hide_phone": "1" if hide_phone == "on" else "0",
-        "job_search_status": job_search_status,
-        "location": location,
-    }
+        "job_search_status": normalize_text(job_search_status, max_length=32),
+        "location": normalize_text(location, max_length=160),
+        }
+    except ValueError as error:
+        set_flash(request, str(error), "error")
+        return RedirectResponse(url="/admin/info", status_code=303)
 
     for field, value in fields.items():
         record = db.query(Info).filter(Info.field == field).first()
@@ -516,7 +800,7 @@ async def update_info(
         else:
             db.add(Info(field=field, value=value))
     db.commit()
-
+    set_flash(request, "Публичный профиль сохранен.")
     return RedirectResponse(url="/admin/info", status_code=303)
 
 
@@ -543,15 +827,21 @@ def show_settings(request: Request, db: Session = Depends(get_db)):
     qr_base64 = base64.b64encode(buffer.getvalue()).decode()
 
     infos = {i.field: i.value for i in db.query(Info).all()}
-    json_status = request.session.pop("json_status", None)
-
-    return templates.TemplateResponse("admin_settings.html", {
-        "request": request,
+    stats = {
+        "experience": db.query(Experience).count(),
+        "skills": db.query(Skill).count(),
+        "education": db.query(Education).count(),
+        "courses": db.query(Course).count(),
+        "languages": db.query(Language).count(),
+        "projects": db.query(Project).count(),
+        "certificates": db.query(Certificate).count(),
+        "recommendations": db.query(Recommendation).count(),
+    }
+    return admin_template(request, "admin_settings.html", {
         "info": infos,
         "admin": admin,
         "qr_base64": qr_base64,
-        "json_success": json_status[1] if json_status and json_status[0] == "success" else None,
-        "json_error": json_status[1] if json_status and json_status[0] == "error" else None
+        "publication": build_publication_state(infos, stats),
     })
 
 @router.post("/admin/change-security-question")
@@ -575,16 +865,8 @@ def change_security_question(
         admin.security_answer = security_answer.strip()
 
     db.commit()
-
-    info = {i.field: i.value for i in db.query(Info).all()}
-    response = templates.TemplateResponse("admin_settings.html", {
-        "request": request,
-        "admin": admin,
-        "info": info,
-        "question_success": True
-    })
-    db.close()
-    return response
+    set_flash(request, "Контрольный вопрос обновлен.")
+    return RedirectResponse(url="/admin/settings", status_code=303)
 
 
 @router.post("/admin/settings")
@@ -593,11 +875,18 @@ async def update_settings(request: Request, db: Session = Depends(get_db)):
     if auth_redirect: return auth_redirect
 
     form = await request.form()
+    existing_info = {i.field: i.value for i in db.query(Info).all()}
+    visibility_action = form.get("visibility_action")
+    visibility_value = existing_info.get("visibility", "public")
+
+    if visibility_action in {"public", "hidden"}:
+        visibility_value = visibility_action
 
     fields = {
-        "template": form.get("template", "classic"),
-        "visibility": "public" if form.get("visibility") == "public" else "hidden",
-        "hidden_message": form.get("hidden_message", "")
+        "template": form.get("template", existing_info.get("template", "classic")),
+        "visibility": visibility_value,
+        "hidden_message": form.get("hidden_message", existing_info.get("hidden_message", "")),
+        "locale": normalize_locale(form.get("locale", existing_info.get("locale", "ru"))),
     }
 
     for field, value in fields.items():
@@ -608,6 +897,34 @@ async def update_settings(request: Request, db: Session = Depends(get_db)):
             db.add(Info(field=field, value=value))
     db.commit()
 
+    stats = {
+        "experience": db.query(Experience).count(),
+        "skills": db.query(Skill).count(),
+        "education": db.query(Education).count(),
+        "courses": db.query(Course).count(),
+        "languages": db.query(Language).count(),
+        "projects": db.query(Project).count(),
+        "certificates": db.query(Certificate).count(),
+        "recommendations": db.query(Recommendation).count(),
+    }
+    publication = build_publication_state(
+        {**existing_info, **fields},
+        stats,
+    )
+
+    if visibility_action == "public":
+        if publication["has_blockers"]:
+            set_flash(
+                request,
+                "Резюме опубликовано, но еще есть базовые пробелы: " + " ".join(publication["blockers"][:2]),
+                "warning",
+            )
+        else:
+            set_flash(request, "Резюме опубликовано.")
+    elif visibility_action == "hidden":
+        set_flash(request, "Резюме скрыто.")
+    else:
+        set_flash(request, "Настройки публикации сохранены.")
     return RedirectResponse(url="/admin/settings", status_code=303)
 
 @router.post("/admin/change-credentials")
@@ -631,8 +948,7 @@ async def change_credentials(
         return RedirectResponse("/login", status_code=302)
 
     if not pwd_context.verify(current_password, admin.password_hash):
-        response = templates.TemplateResponse("admin_settings.html", {
-            "request": request,
+        response = admin_template(request, "admin_settings.html", {
             "admin": admin,
             "info": info,
             "cred_error": "❌ Неверный текущий пароль"
@@ -641,8 +957,7 @@ async def change_credentials(
         return response
 
     if new_password and new_password != confirm_password:
-        response = templates.TemplateResponse("admin_settings.html", {
-            "request": request,
+        response = admin_template(request, "admin_settings.html", {
             "admin": admin,
             "info": info,
             "cred_error": "❌ Пароли не совпадают"
@@ -657,8 +972,7 @@ async def change_credentials(
     db.commit()
     request.session["user"] = new_username
 
-    response = templates.TemplateResponse("admin_settings.html", {
-        "request": request,
+    response = admin_template(request, "admin_settings.html", {
         "admin": admin,
         "info": info,
         "cred_success": "✅ Данные администратора обновлены"
@@ -673,24 +987,37 @@ async def change_credentials(
 def view_skills(request: Request, db: Session = Depends(get_db)):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
-    skills = db.query(Skill).all()
+    skills = db.query(Skill).order_by(Skill.level.desc(), Skill.name.asc()).all()
     last_updated = db.query(Skill).order_by(Skill.updated_at.desc()).first()
-    return templates.TemplateResponse("admin_skills.html", {
-        "request": request,
+    return admin_template(request, "admin_skills.html", {
         "skills": skills,
         "last_updated": last_updated.updated_at if last_updated else None
     })
 
 
 @router.post("/admin/skills/add")
-def add_skill(request: Request, name: str = Form(...), db: Session = Depends(get_db)):
+def add_skill(request: Request, name: str = Form(...), level: int = Form(3), db: Session = Depends(get_db)):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
-    db.add(Skill(name=name))
+    db.add(Skill(name=name, level=max(1, min(level, 5))))
     db.commit()
+    set_flash(request, "Навык добавлен.")
     return RedirectResponse(url="/admin/skills", status_code=303)
 
-@router.get("/admin/skills/delete/{id}")
+@router.post("/admin/skills/update/{id}")
+def update_skill(id: int, request: Request, level: int = Form(3), db: Session = Depends(get_db)):
+    auth_redirect = require_login(request)
+    if auth_redirect:
+        return auth_redirect
+
+    skill = db.query(Skill).get(id)
+    if skill:
+        skill.level = max(1, min(level, 5))
+        db.commit()
+        set_flash(request, "Уровень навыка обновлен.")
+    return RedirectResponse(url="/admin/skills", status_code=303)
+
+@router.post("/admin/skills/delete/{id}")
 def delete_skill(request: Request, id: int, db: Session = Depends(get_db)):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
@@ -698,6 +1025,7 @@ def delete_skill(request: Request, id: int, db: Session = Depends(get_db)):
     if skill:
         db.delete(skill)
         db.commit()
+        set_flash(request, "Навык удален.")
     return RedirectResponse(url="/admin/skills", status_code=303)
 
 @router.get("/admin/education", response_class=HTMLResponse)
@@ -705,9 +1033,10 @@ def view_education(request: Request, db: Session = Depends(get_db)):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
     educations = db.query(Education).all()
-    return templates.TemplateResponse("admin_education.html", {
-        "request": request,
-        "educations": educations
+    return admin_template(request, "admin_education.html", {
+        "educations": educations,
+        "months": MONTH_OPTIONS,
+        "years": YEAR_OPTIONS,
     })
 
 @router.post("/admin/education/add")
@@ -715,15 +1044,18 @@ def add_education(
     request: Request,
     degree: str = Form(...),
     institution: str = Form(...),
-    start: str = Form(...),
-    end: str = Form(...),
+    start_month: str = Form(...),
+    start_year: str = Form(...),
+    end_month: str = Form(...),
+    end_year: str = Form(...),
     specialization: str = Form(...),
     db: Session = Depends(get_db)
 ):
-    from datetime import datetime
     try:
-        start_fmt = datetime.strptime(start, "%Y-%m").strftime("%m.%Y")
-        end_fmt = datetime.strptime(end, "%Y-%m").strftime("%m.%Y")
+        start_value = combine_year_month(start_year, start_month, required=True)
+        end_value = combine_year_month(end_year, end_month, required=True)
+        start_fmt = datetime.strptime(start_value, "%Y-%m").strftime("%m.%Y")
+        end_fmt = datetime.strptime(end_value, "%Y-%m").strftime("%m.%Y")
     except ValueError:
         return HTMLResponse("Неверный формат даты", status_code=400)
 
@@ -736,9 +1068,10 @@ def add_education(
     )
     db.add(edu)
     db.commit()
+    set_flash(request, "Образование добавлено.")
     return RedirectResponse(url="/admin/education", status_code=303)
 
-@router.get("/admin/education/delete/{id}")
+@router.post("/admin/education/delete/{id}")
 def delete_education(id: int, request: Request, db: Session = Depends(get_db)):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
@@ -746,6 +1079,7 @@ def delete_education(id: int, request: Request, db: Session = Depends(get_db)):
     if edu:
         db.delete(edu)
         db.commit()
+        set_flash(request, "Запись об образовании удалена.")
     return RedirectResponse(url="/admin/education", status_code=303)
 
 @router.post("/admin/upload-photo")
@@ -757,9 +1091,15 @@ async def upload_photo(
     if auth_redirect: return auth_redirect
 
     if photo and photo.filename:
-        content = await photo.read()
-        Path("static/uploads/photo.jpg").write_bytes(content)
-
+        try:
+            content = await read_limited_upload(photo, MAX_PHOTO_BYTES)
+            save_profile_photo(content, Path("static/uploads/photo.jpg"))
+        except ValueError as error:
+            set_flash(request, str(error), "error")
+            return RedirectResponse(url="/admin/info", status_code=303)
+        set_flash(request, "Фотография обновлена.")
+    else:
+        set_flash(request, "Не удалось загрузить фотографию.", "error")
     return RedirectResponse(url="/admin/info", status_code=303)
 
 
@@ -769,8 +1109,7 @@ def view_languages(request: Request, db: Session = Depends(get_db)):
     if auth_redirect: return auth_redirect
     langs = db.query(Language).all()
     levels = ["A1 — Начальный", "A2 — Элементарный", "B1 — Средний", "B2 — Выше среднего", "C1 — Продвинутый", "Родной"]
-    return templates.TemplateResponse("admin_languages.html", {
-        "request": request,
+    return admin_template(request, "admin_languages.html", {
         "languages": langs,
         "levels": levels
     })
@@ -787,9 +1126,10 @@ def add_language(
 
     db.add(Language(name=name, level=level))
     db.commit()
+    set_flash(request, "Язык добавлен.")
     return RedirectResponse(url="/admin/languages", status_code=303)
 
-@router.get("/admin/languages/delete/{id}")
+@router.post("/admin/languages/delete/{id}")
 def delete_language(id: int, request: Request, db: Session = Depends(get_db)):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
@@ -797,6 +1137,7 @@ def delete_language(id: int, request: Request, db: Session = Depends(get_db)):
     if lang:
         db.delete(lang)
         db.commit()
+        set_flash(request, "Язык удален.")
     return RedirectResponse(url="/admin/languages", status_code=303)
 
 
@@ -804,9 +1145,8 @@ def delete_language(id: int, request: Request, db: Session = Depends(get_db)):
 def view_projects(request: Request, db: Session = Depends(get_db)):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
-    projects = db.query(Project).all()
-    return templates.TemplateResponse("admin_projects.html", {
-        "request": request,
+    projects = db.query(Project).order_by(Project.position.asc(), Project.id.asc()).all()
+    return admin_template(request, "admin_projects.html", {
         "projects": projects
     })
 
@@ -821,13 +1161,33 @@ def add_project(
 ):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
-    if link and not link.startswith("http"):
-        link = "https://" + link
-    db.add(Project(title=title, description=description, link=link, stack=stack))
+    try:
+        link = normalize_url(link) if link else ""
+    except ValueError as error:
+        set_flash(request, str(error), "error")
+        return RedirectResponse(url="/admin/projects", status_code=303)
+    db.add(Project(
+        title=normalize_text(title, max_length=180),
+        description=normalize_text(description, max_length=3000),
+        link=link,
+        stack=normalize_text(stack, max_length=500),
+        position=get_next_position(db, Project),
+    ))
     db.commit()
+    set_flash(request, "Проект добавлен.")
     return RedirectResponse(url="/admin/projects", status_code=303)
 
-@router.get("/admin/projects/delete/{id}")
+@router.post("/admin/projects/move/{id}/{direction}")
+def move_project(id: int, direction: str, request: Request, db: Session = Depends(get_db)):
+    auth_redirect = require_login(request)
+    if auth_redirect:
+        return auth_redirect
+
+    if direction in {"up", "down"} and move_item(db, Project, id, direction):
+        set_flash(request, "Порядок проектов обновлен.")
+    return RedirectResponse(url="/admin/projects", status_code=303)
+
+@router.post("/admin/projects/delete/{id}")
 def delete_project(id: int, request: Request, db: Session = Depends(get_db)):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
@@ -835,6 +1195,7 @@ def delete_project(id: int, request: Request, db: Session = Depends(get_db)):
     if project:
         db.delete(project)
         db.commit()
+        set_flash(request, "Проект удален.")
     return RedirectResponse(url="/admin/projects", status_code=303)
 
 
@@ -843,9 +1204,9 @@ def view_certificates(request: Request, db: Session = Depends(get_db)):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
     certificates = db.query(Certificate).all()
-    return templates.TemplateResponse("admin_certificates.html", {
-        "request": request,
-        "certificates": certificates
+    return admin_template(request, "admin_certificates.html", {
+        "certificates": certificates,
+        "certificate_years": build_year_options(1980),
     })
 
 @router.post("/admin/certificates/add")
@@ -861,19 +1222,31 @@ def add_certificate(
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
 
-    file_path = ""
-    if file:
-        dest = f"static/uploads/certificates/{file.filename}"
-        with open(dest, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        file_path = "/" + dest
+    try:
+        link = normalize_url(link) if link else ""
+        file_path = ""
+        if file and file.filename:
+            content = file.file.read(MAX_CERTIFICATE_BYTES + 1)
+            if len(content) > MAX_CERTIFICATE_BYTES:
+                raise ValueError("Файл сертификата слишком большой")
+            file_path = save_certificate_file(content, file.filename, Path("static/uploads/certificates"))
+    except ValueError as error:
+        set_flash(request, str(error), "error")
+        return RedirectResponse(url="/admin/certificates", status_code=303)
 
-    cert = Certificate(title=title, issuer=issuer, year=year, link=link or None, file_path=file_path or None)
+    cert = Certificate(
+        title=normalize_text(title, max_length=180),
+        issuer=normalize_text(issuer, max_length=180),
+        year=year,
+        link=link or None,
+        file_path=file_path or None,
+    )
     db.add(cert)
     db.commit()
+    set_flash(request, "Сертификат добавлен.")
     return RedirectResponse(url="/admin/certificates", status_code=303)
 
-@router.get("/admin/certificates/delete/{id}")
+@router.post("/admin/certificates/delete/{id}")
 def delete_certificate(id: int, request: Request, db: Session = Depends(get_db)):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
@@ -883,15 +1256,15 @@ def delete_certificate(id: int, request: Request, db: Session = Depends(get_db))
             os.remove(cert.file_path[1:])
         db.delete(cert)
         db.commit()
+        set_flash(request, "Сертификат удален.")
     return RedirectResponse(url="/admin/certificates", status_code=303)
 
 @router.get("/admin/recommendations", response_class=HTMLResponse)
 def view_recommendations(request: Request, db: Session = Depends(get_db)):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
-    recs = db.query(Recommendation).all()
-    return templates.TemplateResponse("admin_recommendations.html", {
-        "request": request,
+    recs = db.query(Recommendation).order_by(Recommendation.position.asc(), Recommendation.id.asc()).all()
+    return admin_template(request, "admin_recommendations.html", {
         "recommendations": recs
     })
 
@@ -900,18 +1273,35 @@ def add_recommendation(
     request: Request,
     name: str = Form(...),
     company: str = Form(...),
-    quote: str = Form(...),
+    quote: str = Form(""),
+    without_text: str = Form(None),
     db: Session = Depends(get_db)
 ):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
 
-    r = Recommendation(name=name, company=company, quote=quote)
+    r = Recommendation(
+        name=name,
+        company=company,
+        quote="" if without_text == "on" else quote,
+        position=get_next_position(db, Recommendation),
+    )
     db.add(r)
     db.commit()
+    set_flash(request, "Рекомендация добавлена.")
     return RedirectResponse(url="/admin/recommendations", status_code=303)
 
-@router.get("/admin/recommendations/delete/{id}")
+@router.post("/admin/recommendations/move/{id}/{direction}")
+def move_recommendation(id: int, direction: str, request: Request, db: Session = Depends(get_db)):
+    auth_redirect = require_login(request)
+    if auth_redirect:
+        return auth_redirect
+
+    if direction in {"up", "down"} and move_item(db, Recommendation, id, direction):
+        set_flash(request, "Порядок рекомендаций обновлен.")
+    return RedirectResponse(url="/admin/recommendations", status_code=303)
+
+@router.post("/admin/recommendations/delete/{id}")
 def delete_recommendation(id: int, request: Request, db: Session = Depends(get_db)):
     auth_redirect = require_login(request)
     if auth_redirect: return auth_redirect
@@ -919,7 +1309,5 @@ def delete_recommendation(id: int, request: Request, db: Session = Depends(get_d
     if r:
         db.delete(r)
         db.commit()
+        set_flash(request, "Рекомендация удалена.")
     return RedirectResponse(url="/admin/recommendations", status_code=303)
-
-
-

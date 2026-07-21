@@ -1,32 +1,87 @@
 {% extends "admin_base.html" %}
 {% block content %}
-<h2>Проекты</h2>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ _('Проекты') }}</h1>
+        <p class="page-subtitle">{{ _('Кейсы и pet-проекты, которые усиливают резюме и показывают практический уровень.') }}</p>
+    </div>
+</div>
 
-<form action="/admin/projects/add" method="post">
-    <label>Название:</label><br>
-    <input name="title"><br>
+<section class="panel">
+    <h2 class="panel-title">{{ _('Добавить проект') }}</h2>
+    <div class="content-tip-card" style="margin-bottom: 16px;">
+        <p class="content-tip-kicker">{{ _('Какие проекты реально усиливают резюме') }}</p>
+        <p class="content-tip-copy">{{ _('Показывай то, что раскрывает твой уровень: сложный коммерческий кейс, сильный pet-project, заметный внутренний инструмент, продукт с пользователями или измеримым эффектом.') }}</p>
+    </div>
+    <form action="/admin/projects/add" method="post">
+        <div class="field-grid">
+            <div class="field">
+                <label for="project-title">{{ _('Название') }}</label>
+                <input id="project-title" name="title">
+            </div>
+            <div class="field">
+                <label for="project-stack">{{ _('Стек технологий') }}</label>
+                <input id="project-stack" name="stack" placeholder="Python, FastAPI, PostgreSQL">
+            </div>
+            <div class="field field-full">
+                <label for="project-description">{{ _('Описание') }}</label>
+                <textarea id="project-description" name="description" rows="4"></textarea>
+                <div class="field-guidance">
+                    <p class="helper">{{ _('Хорошо: задача, твоя роль, что сделал, чем проект ценен, и какой получился результат.') }}</p>
+                    <p class="helper">{{ _('Если проект без ссылки, описание должно быть особенно конкретным.') }}</p>
+                </div>
+            </div>
+            <div class="field field-full">
+                <label for="project-link">{{ _('Ссылка') }}</label>
+                <input id="project-link" name="link" placeholder="https://">
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">{{ _('Добавить проект') }}</button>
+        </div>
+    </form>
+</section>
 
-    <label>Описание:</label><br>
-    <textarea name="description" rows="3"></textarea><br>
-
-    <label>Ссылка (необязательно):</label><br>
-    <input name="link"><br>
-
-    <label>Стек технологий:</label><br>
-    <input name="stack"><br>
-
-    <input type="submit" value="Добавить">
-</form>
-
-<ul>
-    {% for p in projects %}
-    <li>
-        <strong>{{ p.title }}</strong>
-        {% if p.link %} — <a href="{{ p.link }}" target="_blank">ссылка</a>{% endif %}<br>
-        {{ p.description }}<br>
-        <em>{{ p.stack }}</em><br>
-        <a href="/admin/projects/delete/{{ p.id }}">Удалить</a>
-    </li>
-    {% endfor %}
-</ul>
+<section class="panel">
+    <div class="panel-title-row">
+        <h2 class="panel-title">{{ _('Текущие проекты') }}</h2>
+        <span class="badge badge-neutral">{{ projects|length }} шт.</span>
+    </div>
+    <ul class="stack-list">
+        {% for p in projects %}
+            <li>
+                <div class="stack-list-item-head">
+                    <div>
+                        <p class="stack-list-item-title">{{ p.title }}</p>
+                        {% if p.stack %}
+                            <p class="stack-list-item-subtitle">{{ p.stack }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="stack-actions">
+                        <form method="post" action="/admin/projects/move/{{ p.id }}/up">
+                            <button type="submit" class="link-button">{{ _('Выше') }}</button>
+                        </form>
+                        <form method="post" action="/admin/projects/move/{{ p.id }}/down">
+                            <button type="submit" class="link-button">{{ _('Ниже') }}</button>
+                        </form>
+                        {% if p.link %}
+                            <a href="{{ p.link }}" target="_blank" rel="noreferrer">{{ _('Открыть') }}</a>
+                        {% endif %}
+                        <form method="post" action="/admin/projects/delete/{{ p.id }}">
+                            <button type="submit" class="link-button">{{ _('Удалить') }}</button>
+                        </form>
+                    </div>
+                </div>
+                <p class="stack-list-item-copy">{{ p.description }}</p>
+            </li>
+        {% else %}
+            <li>
+                <div class="content-empty-card">
+                    <p class="content-empty-title">{{ _('Проекты пока не добавлены') }}</p>
+                    <p class="content-empty-copy">{{ _('Здесь лучше всего смотрятся 2-5 сильных кейсов с понятной задачей, результатом и стеком. Особенно полезно, если хочешь усилить опыт, сменить роль или показать hands-on уровень.') }}</p>
+                </div>
+            </li>
+        {% endfor %}
+    </ul>
+</section>
 {% endblock %}

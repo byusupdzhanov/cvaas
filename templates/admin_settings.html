@@ -1,129 +1,208 @@
 {% extends "admin_base.html" %}
 {% block content %}
-<h2>⚙️ Настройки резюме</h2>
-
-<form action="/admin/settings" method="post" class="settings-form">
-
-    <h3>📤 Экспорт резюме</h3>
-    <a href="/admin/export-json" class="btn-secondary">
-        <i class="fas fa-file-export"></i> Скачать JSON
-    </a>
-
-    <h3 class="mt-4">📥 Импорт резюме</h3>
-    <a href="/admin/import-json" class="btn-secondary" title="Загрузите .json-файл резюме">
-  <i class="fas fa-file-import"></i> Перейти на страницу импорта
-</a>
-
-{% if json_success %}
-  <p class="mt-2 text-green-600">✅ {{ json_success }}</p>
-{% elif json_error %}
-  <p class="mt-2 text-red-600">❌ {{ json_error }}</p>
-{% endif %}
-
-<h3 class="mt-4 flex items-center gap-2">
-    📦 Резервная копия
-    <span class="tooltip" title="Сохраняется база и все загруженные фото/файлы.">❓</span>
-  </h3>
-<a href="/admin/backup" class="btn-secondary">
-  <i class="fas fa-download"></i> Скачать архив (.zip)
-</a>
-
-  <h3>🎨 Шаблон оформления</h3>
-  <label for="template">Выберите стиль:</label>
-  <select name="template">
-      <option value="classic" {% if info.get("template") == "classic" %}selected{% endif %}>Классический</option>
-      <option value="modern" {% if info.get("template") == "modern" %}selected{% endif %}>Современный</option>
-  </select>
-
-  <hr class="my-6">
-
-  <h3>👁️ Видимость резюме</h3>
-  <label>
-    <input type="checkbox" name="visibility" value="public"
-      {% if info.get("visibility", "public") == "public" %}checked{% endif %}>
-    Резюме опубликовано
-  </label><br>
-
-  <label for="hidden_message">Сообщение, если скрыто:</label><br>
-  <textarea name="hidden_message" rows="3" cols="60">{{ info.get("hidden_message", "") }}</textarea>
-
-  <br><br>
-  <input type="submit" value="💾  Сохранить настройки">
-</form>
-
-<hr class="my-6">
-<h3>🔐 Сменить логин и пароль</h3>
-
-<form action="/admin/change-credentials" method="post">
-    <label>Текущий пароль:</label><br>
-    <input type="password" name="current_password" required><br><br>
-
-    <label>Новый логин:</label><br>
-    <input type="text" name="new_username" required><br><br>
-
-    <label>Новый пароль:</label><br>
-    <input type="password" name="new_password"><br><br>
-
-    <label>Подтвердите новый пароль:</label><br>
-    <input type="password" name="confirm_password"><br><br>
-
-    <input type="submit" value="Сохранить">
-
-    {% if cred_error %}
-      <p style="color: red;">{{ cred_error }}</p>
-    {% elif cred_success %}
-      <p style="color: green;">{{ cred_success }}</p>
-    {% endif %}
-</form>
-
-<h3 class="text-lg font-semibold mt-8 mb-2">🛡 Двухфакторная аутентификация (2FA)</h3>
-
-{% if admin.twofa_enabled %}
-<p class="text-green-600 mb-2">2FA включена. Используйте приложение (Google Authenticator, 1Password и т.п.).</p>
-{% else %}
-<p class="text-yellow-600 mb-2">2FA не активна. Вы можете подключить ниже.</p>
-{% endif %}
-
-{% if request.query_params.get("disabled_2fa") == "true" %}
-<div class="bg-green-100 text-green-700 px-4 py-2 rounded mb-4 text-sm">
-    2FA успешно отключена.
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ _('Настройки') }}</h1>
+        <p class="page-subtitle">{{ _('Публикация, импорт и экспорт, безопасность и доступ администратора собраны в одном месте.') }}</p>
+    </div>
 </div>
-{% endif %}
-{% if admin.twofa_enabled %}
-<p class="text-green-600 mb-2">✅ 2FA включена. Используется при восстановлении доступа.</p>
-<form method="post" action="/admin/disable-2fa">
-    <button class="btn-danger">Отключить 2FA</button>
-</form>
-{% else %}
 
-  {% if qr_base64 %}
-    <img src="data:image/png;base64,{{ qr_base64 }}" alt="QR Code" class="my-2">
-    <form method="post" action="/admin/enable-2fa">
-      <label for="code" class="block text-sm font-medium">Код из приложения</label>
-      <input type="text" name="code" id="code" required class="w-full border rounded px-3 py-2 my-2">
-      <button class="btn-primary">Включить 2FA</button>
+<section class="panel">
+    <div class="panel-title-row">
+        <h2 class="panel-title">{{ _('Публикация и данные') }}</h2>
+        <span class="badge">Core</span>
+    </div>
+    <form action="/admin/settings" method="post" class="publication-state-card {% if publication.is_public %}is-public{% else %}is-hidden{% endif %}">
+        <div class="publication-state-head">
+            <div>
+                <p class="publication-state-kicker">{{ _('Статус публикации') }}</p>
+                <h3 class="publication-state-title">{{ _(publication.status_label) }}</h3>
+                <p class="helper">{{ _(publication.status_copy) }}</p>
+            </div>
+            <span class="badge {% if publication.is_public %}badge-success{% else %}badge-neutral{% endif %}">
+                {{ _(publication.status_label) }}
+            </span>
+        </div>
+
+        <input type="hidden" name="template" value="{{ info.get('template', 'classic') }}">
+
+        <div class="publication-actions">
+            <button type="submit" name="visibility_action" value="public" class="btn-primary">{{ _('Опубликовать резюме') }}</button>
+            <button type="submit" name="visibility_action" value="hidden" class="btn-secondary">{{ _('Скрыть резюме') }}</button>
+        </div>
+
+        <div class="field">
+            <label for="hidden_message_publish">{{ _('Сообщение при скрытом резюме') }}</label>
+            <textarea id="hidden_message_publish" name="hidden_message" rows="3">{{ info.get("hidden_message", "") }}</textarea>
+            <p class="helper">{{ _('Этот текст увидит посетитель, если резюме скрыто. Лучше держать его коротким и нейтральным.') }}</p>
+        </div>
+
+        {% if publication.is_public %}
+            <div class="publication-visitor-card">
+                <p class="content-tip-kicker">{{ _('Что видит посетитель') }}</p>
+                <p class="content-tip-copy">{{ _('Полное резюме открывается по публичной ссылке и доступно для просмотра и печати.') }}</p>
+            </div>
+        {% else %}
+            <div class="publication-visitor-card">
+                <p class="content-tip-kicker">{{ _('Что видит посетитель') }}</p>
+                <p class="content-tip-copy">{{ publication.hidden_message }}</p>
+            </div>
+        {% endif %}
+
+        {% if publication.has_blockers %}
+            <div class="publication-warning-card">
+                <p class="content-tip-kicker">{{ _('Перед публикацией стоит проверить') }}</p>
+                <ul class="publication-warning-list">
+                    {% for blocker in publication.blockers %}
+                        <li>{{ _(blocker) }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
     </form>
-  {% endif %}
-{% endif %}
-{% if request.query_params.get("error") == "invalid_2fa" %}
-<div class="bg-red-100 text-red-700 px-4 py-2 rounded mb-4 text-sm">
-    Неверный код 2FA. Попробуйте снова.
+
+    <form action="/admin/settings" method="post" class="settings-form">
+        <div class="grid-3 settings-actions-grid equal-panels">
+            <div class="panel settings-action-card">
+                <h3 class="panel-title">{{ _('Экспорт') }}</h3>
+                <p class="helper">{{ _('Скачать текущую структуру резюме в JSON.') }}</p>
+                <div class="form-actions">
+                    <a href="/admin/export-json" class="btn-secondary"><i class="fas fa-file-export"></i> {{ _('Скачать JSON') }}</a>
+                </div>
+            </div>
+            <div class="panel settings-action-card">
+                <h3 class="panel-title">{{ _('Импорт') }}</h3>
+                <p class="helper">{{ _('Перейти к загрузке экспортированного JSON.') }}</p>
+                <div class="form-actions">
+                    <a href="/admin/import-json" class="btn-secondary"><i class="fas fa-file-import"></i> {{ _('Импорт') }}</a>
+                </div>
+            </div>
+            <div class="panel settings-action-card">
+                <h3 class="panel-title">{{ _('Резервная копия') }}</h3>
+                <p class="helper">{{ _('Архив включает базу и загруженные файлы.') }}</p>
+                <div class="form-actions">
+                    <a href="/admin/backup" class="btn-secondary"><i class="fas fa-download"></i> {{ _('Скачать .zip') }}</a>
+                </div>
+            </div>
+        </div>
+
+        {% if json_success %}
+            <div class="alert-success" style="margin-top: 16px;">{{ _(json_success) }}</div>
+        {% elif json_error %}
+            <div class="alert-error" style="margin-top: 16px;">{{ _(json_error) }}</div>
+        {% endif %}
+
+        <div class="field-grid" style="margin-top: 18px;">
+            <div class="field">
+                <label for="template">{{ _('Шаблон оформления') }}</label>
+                <select id="template" name="template">
+                    <option value="classic" {% if info.get("template") == "classic" %}selected{% endif %}>{{ _('Классический') }}</option>
+                    <option value="modern" {% if info.get("template") == "modern" %}selected{% endif %}>{{ _('Современный') }}</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="locale">{{ _('Язык интерфейса') }}</label>
+                <select id="locale" name="locale">
+                    <option value="ru" {% if (info.get("locale", "ru")) == "ru" %}selected{% endif %}>{{ _('Русский') }}</option>
+                    <option value="en" {% if info.get("locale") == "en" %}selected{% endif %}>{{ _('Английский') }}</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">{{ _('Сохранить настройки') }}</button>
+        </div>
+    </form>
+</section>
+
+<section class="panel">
+    <div class="panel-title-row">
+        <h2 class="panel-title">{{ _('Доступ администратора') }}</h2>
+        <span class="badge badge-neutral">Security</span>
+    </div>
+    <form action="/admin/change-credentials" method="post">
+        <div class="field-grid">
+            <div class="field">
+                <label for="current_password">{{ _('Текущий пароль') }}</label>
+                <input id="current_password" type="password" name="current_password" required>
+            </div>
+            <div class="field">
+                <label for="new_username">{{ _('Новый логин') }}</label>
+                <input id="new_username" type="text" name="new_username" required>
+            </div>
+            <div class="field">
+                <label for="new_password">{{ _('Новый пароль') }}</label>
+                <input id="new_password" type="password" name="new_password">
+            </div>
+            <div class="field">
+                <label for="confirm_password">{{ _('Подтверждение пароля') }}</label>
+                <input id="confirm_password" type="password" name="confirm_password">
+            </div>
+        </div>
+        {% if cred_error %}
+            <div class="alert-error">{{ _(cred_error) }}</div>
+        {% elif cred_success %}
+            <div class="alert-success">{{ _(cred_success) }}</div>
+        {% endif %}
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">{{ _('Обновить доступ') }}</button>
+        </div>
+    </form>
+</section>
+
+<div class="grid-2 equal-panels" style="margin-top: 18px;">
+    <section class="panel">
+        <div class="panel-title-row">
+            <h2 class="panel-title">{{ _('Двухфакторная защита') }}</h2>
+            {% if admin.twofa_enabled %}
+                <span class="badge">{{ _('Включена') }}</span>
+            {% else %}
+                <span class="badge badge-neutral">{{ _('Неактивна') }}</span>
+            {% endif %}
+        </div>
+
+        {% if admin.twofa_enabled %}
+            <p class="helper">{{ _('2FA уже включена. Она используется при восстановлении доступа к панели администратора.') }}</p>
+            <form method="post" action="/admin/disable-2fa">
+                <div class="form-actions">
+                    <button class="btn-danger" type="submit">{{ _('Отключить 2FA') }}</button>
+                </div>
+            </form>
+        {% else %}
+            <p class="helper">{{ _('Сканируйте QR-код в Google Authenticator, 1Password или другом TOTP-приложении, затем введите код подтверждения.') }}</p>
+            {% if qr_base64 %}
+                <img src="data:image/png;base64,{{ qr_base64 }}" alt="QR Code" class="my-2" style="max-width: 220px; border-radius: 20px;">
+                <form method="post" action="/admin/enable-2fa">
+                    <div class="field">
+                        <label for="code">{{ _('Код из приложения') }}</label>
+                        <input type="text" name="code" id="code" required>
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn-primary" type="submit">{{ _('Включить 2FA') }}</button>
+                    </div>
+                </form>
+            {% endif %}
+        {% endif %}
+    </section>
+
+    <section class="panel">
+        <div class="panel-title-row">
+            <h2 class="panel-title">{{ _('Контрольный вопрос') }}</h2>
+            <span class="badge badge-neutral">Recovery</span>
+        </div>
+        <form method="post" action="/admin/change-security-question">
+            <div class="field">
+                <label for="security_question">{{ _('Вопрос') }}</label>
+                <input type="text" id="security_question" name="security_question" value="{{ admin.security_question or '' }}">
+            </div>
+            <div class="field">
+                <label for="security_answer">{{ _('Ответ') }}</label>
+                <input type="text" id="security_answer" name="security_answer" placeholder="{{ _('Новый ответ') }}">
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn-secondary">{{ _('Сохранить вопрос') }}</button>
+            </div>
+        </form>
+    </section>
 </div>
-{% endif %}
-
-<h3 class="text-lg font-semibold mt-10 mb-2">🔐 Контрольный вопрос</h3>
-
-<form method="post" action="/admin/change-security-question" class="space-y-4 max-w-md">
-    <label for="security_question" class="block text-sm font-medium">Вопрос</label>
-    <input type="text" id="security_question" name="security_question" value="{{ admin.security_question or '' }}" class="w-full border rounded px-3 py-2">
-
-    <label for="security_answer" class="block text-sm font-medium">Ответ</label>
-    <input type="text" id="security_answer" name="security_answer" placeholder="(не отображается)" class="w-full border rounded px-3 py-2">
-
-    <button type="submit" class="btn-secondary">Сохранить</button>
-</form>
-
-{% if question_success %}
-<div class="text-green-600 mt-2 text-sm">✅ Контрольный вопрос обновлён</div>
-{% endif %}
 {% endblock %}

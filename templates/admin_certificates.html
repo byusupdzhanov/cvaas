@@ -1,37 +1,77 @@
 {% extends "admin_base.html" %}
 {% block content %}
-<h2>Сертификаты</h2>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ _('Сертификаты') }}</h1>
+        <p class="page-subtitle">{{ _('Ссылки и PDF-документы, которые подтверждают квалификацию и не теряются в шуме.') }}</p>
+    </div>
+</div>
 
-<form action="/admin/certificates/add" method="post" enctype="multipart/form-data">
-    <label>Название:</label><br>
-    <input name="title"><br>
+<section class="panel">
+    <h2 class="panel-title">{{ _('Добавить сертификат') }}</h2>
+    <form action="/admin/certificates/add" method="post" enctype="multipart/form-data">
+        <div class="field-grid">
+            <div class="field">
+                <label for="certificate-title">{{ _('Название') }}</label>
+                <input id="certificate-title" name="title">
+            </div>
+            <div class="field">
+                <label for="certificate-issuer">{{ _('Организация') }}</label>
+                <input id="certificate-issuer" name="issuer">
+            </div>
+            <div class="field">
+                <label for="certificate-year">{{ _('Год') }}</label>
+                <select id="certificate-year" name="year" required>
+                    <option value="">{{ _('Выбери год') }}</option>
+                    {% for year in certificate_years %}
+                        <option value="{{ year }}">{{ year }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field">
+                <label for="certificate-link">{{ _('Ссылка') }}</label>
+                <input id="certificate-link" name="link">
+            </div>
+            <div class="field field-full">
+                <label for="certificate-file">{{ _('Файл PDF') }}</label>
+                <input id="certificate-file" type="file" name="file" accept="application/pdf,image/png,image/jpeg,image/webp">
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">{{ _('Добавить сертификат') }}</button>
+        </div>
+    </form>
+</section>
 
-    <label>Организация:</label><br>
-    <input name="issuer"><br>
-
-    <label>Год:</label><br>
-    <input name="year" type="number"><br>
-
-    <label>Ссылка (если есть):</label><br>
-    <input name="link"><br>
-
-    <label>Файл (PDF, если нет ссылки):</label><br>
-    <input type="file" name="file" accept="application/pdf"><br><br>
-
-    <input type="submit" value="Добавить">
-</form>
-
-<ul>
-    {% for c in certificates %}
-    <li>
-        {{ c.title }} — {{ c.issuer }}, {{ c.year }}
-        {% if c.link %}
-            — <a href="{{ c.link }}" target="_blank">Ссылка</a>
-        {% elif c.file_path %}
-            — <a href="{{ c.file_path }}" target="_blank">Скачать</a>
-        {% endif %}
-        <a href="/admin/certificates/delete/{{ c.id }}">Удалить</a>
-    </li>
-    {% endfor %}
-</ul>
+<section class="panel">
+    <div class="panel-title-row">
+        <h2 class="panel-title">{{ _('Список сертификатов') }}</h2>
+        <span class="badge badge-neutral">{{ certificates|length }} шт.</span>
+    </div>
+    <ul class="stack-list">
+        {% for c in certificates %}
+            <li>
+                <div class="stack-list-item-head">
+                    <div>
+                        <p class="stack-list-item-title">{{ c.title }}</p>
+                        <p class="stack-list-item-subtitle">{{ c.issuer }}</p>
+                    </div>
+                    <div class="stack-actions">
+                        <span class="badge badge-neutral">{{ c.year }}</span>
+                        {% if c.link %}
+                            <a href="{{ c.link }}" target="_blank" rel="noreferrer">{{ _('Ссылка') }}</a>
+                        {% elif c.file_path %}
+                            <a href="{{ c.file_path }}" target="_blank" rel="noreferrer">{{ _('Скачать') }}</a>
+                        {% endif %}
+                        <form method="post" action="/admin/certificates/delete/{{ c.id }}">
+                            <button type="submit" class="link-button">{{ _('Удалить') }}</button>
+                        </form>
+                    </div>
+                </div>
+            </li>
+        {% else %}
+            <li><p class="stack-list-item-copy">{{ _('Пока пусто.') }}</p></li>
+        {% endfor %}
+    </ul>
+</section>
 {% endblock %}

@@ -1,38 +1,95 @@
 {% extends "admin_base.html" %}
 {% block content %}
-<h2>Редактировать опыт</h2>
-<form action="/admin/edit/{{ exp.id }}" method="post">
-    <label>Компания:</label><br>
-    <input name="company" value="{{ exp.company }}" required><br>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ _('Редактировать опыт') }}</h1>
+        <p class="page-subtitle">{{ _('Обнови формулировки, даты и результаты так, чтобы запись читалась быстро и убедительно.') }}</p>
+    </div>
+</div>
 
-    <label>Роль:</label><br>
-    <input name="role" value="{{ exp.role }}" required><br>
+<section class="panel">
+    <h2 class="panel-title">{{ _('Редактирование записи') }}</h2>
+    <form action="/admin/edit/{{ exp.id }}" method="post">
+        {% set current = exp.end_date is none and "н.в." in exp.period %}
+        {% set start_year = exp.start_date[:4] if exp.start_date else '' %}
+        {% set start_month = exp.start_date[5:7] if exp.start_date else '' %}
+        {% set end_year = exp.end_date[:4] if exp.end_date else '' %}
+        {% set end_month = exp.end_date[5:7] if exp.end_date else '' %}
 
-    {% set start = exp.period.split(" — ")[0] %}
-    {% set end = exp.period.split(" — ")[1] if " — " in exp.period else "" %}
-    {% set end_value = end if end and end != "н.в." else "" %}
-    {% set current = end == "н.в." %}
+        <div class="field-grid">
+            <div class="field">
+                <label for="company">{{ _('Компания') }}</label>
+                <input id="company" name="company" value="{{ exp.company }}" required>
+            </div>
+            <div class="field">
+                <label for="location">{{ _('Город / страна / формат') }}</label>
+                <input id="location" name="location" value="{{ exp.location or '' }}" placeholder="{{ _('Москва / Удаленно / Берлин, Германия') }}">
+            </div>
+            <div class="field">
+                <label for="role">{{ _('Роль') }}</label>
+                <input id="role" name="role" value="{{ exp.role }}" required>
+            </div>
+            <div class="field">
+                <label>{{ _('Начало') }}</label>
+                <div class="date-select-row">
+                    <select name="start_month" aria-label="{{ _('Месяц начала') }}" required>
+                        <option value="">{{ _('Месяц') }}</option>
+                        {% for value, label in months %}
+                            <option value="{{ value }}" {% if value == start_month %}selected{% endif %}>{{ _(label) }}</option>
+                        {% endfor %}
+                    </select>
+                    <select name="start_year" aria-label="{{ _('Год начала') }}" required>
+                        <option value="">{{ _('Год') }}</option>
+                        {% for year in years %}
+                            <option value="{{ year }}" {% if year == start_year %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="field">
+                <label>{{ _('Окончание') }}</label>
+                <div class="date-select-row">
+                    <select name="end_month" id="end_month" aria-label="{{ _('Месяц окончания') }}" {% if current %}disabled{% endif %}>
+                        <option value="">{{ _('Месяц') }}</option>
+                        {% for value, label in months %}
+                            <option value="{{ value }}" {% if value == end_month %}selected{% endif %}>{{ _(label) }}</option>
+                        {% endfor %}
+                    </select>
+                    <select name="end_year" id="end_year" aria-label="{{ _('Год окончания') }}" {% if current %}disabled{% endif %}>
+                        <option value="">{{ _('Год') }}</option>
+                        {% for year in years %}
+                            <option value="{{ year }}" {% if year == end_year %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="field field-full">
+                <label class="checkbox-row">
+                    <input type="checkbox" id="current" name="current" {% if current %}checked{% endif %}>
+                    {{ _('Работаю здесь в настоящее время') }}
+                </label>
+            </div>
+            <div class="field field-full">
+                <label for="description">{{ _('Описание') }}</label>
+                <textarea id="description" name="description" rows="5">{{ exp.description }}</textarea>
+            </div>
+        </div>
 
-    <label>Начало:</label><br>
-    <input type="month" name="start" value="{{ start | replace('.', '-') }}" required><br>
-
-    <label>Окончание:</label><br>
-    <input type="month" name="end" id="end_month" {% if current %}disabled{% endif %} value="{{ end_value | replace('.', '-') }}"><br>
-
-    <label><input type="checkbox" id="current" name="current" {% if current %}checked{% endif %}> Настоящее время</label><br>
-
-    <label>Описание:</label><br>
-    <textarea name="description" rows="4">{{ exp.description }}</textarea><br>
-
-    <input type="submit" value="Сохранить">
-</form>
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">{{ _('Сохранить запись') }}</button>
+            <a href="/admin/add" class="btn-secondary">{{ _('Вернуться к списку') }}</a>
+        </div>
+    </form>
+</section>
 
 <script>
     const checkbox = document.getElementById('current');
-    const endField = document.getElementById('end_month');
+    const endMonthField = document.getElementById('end_month');
+    const endYearField = document.getElementById('end_year');
 
     checkbox.addEventListener('change', () => {
-        endField.disabled = checkbox.checked;
+        endMonthField.disabled = checkbox.checked;
+        endYearField.disabled = checkbox.checked;
     });
 </script>
 {% endblock %}

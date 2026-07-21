@@ -1,52 +1,124 @@
 {% extends "admin_base.html" %}
 {% block content %}
-<h2>Добавить опыт работы</h2>
-<form action="/admin/add" method="post">
-    <label>Компания:</label><br>
-    <input name="company" required><br>
-
-    <label>Роль:</label><br>
-    <input name="role" required><br>
-
-    <label>Начало:</label><br>
-    <input type="month" name="start" required><br>
-
-    <label>Конец:</label><br>
-    <input type="month" name="end" id="end_month"><br>
-
-    <label><input type="checkbox" name="current" id="current"> Настоящее время</label><br>
-
-    <label>Описание:</label><br>
-    <textarea name="description" rows="4" required></textarea><br>
-
-    <input type="submit" value="Добавить">
-</form>
-
-<h3>Текущий опыт</h3>
-{% for exp in experiences %}
-  <div class="experience-block">
+<div class="page-header">
     <div>
-      <strong>{{ exp.company }} ({{ exp.period }})</strong><br>
-      {{ exp.role }}<br>
-      <p>{{ exp.description | nl2br | safe }}</p>
+        <h1 class="page-title">{{ _('Опыт работы') }}</h1>
+        <p class="page-subtitle">{{ _('Главный блок резюме. Здесь особенно важны ясные формулировки и структура.') }}</p>
     </div>
-    <div class="btn-group">
-      <a href="/admin/edit/{{ exp.id }}" class="btn btn-secondary btn-small">✏️ Редактировать</a>
-      <a href="/admin/delete/{{ exp.id }}" class="btn btn-danger btn-small"
-         onclick="return confirm('Удалить опыт?')">🗑️ Удалить</a>
-    </div>
-  </div>
-{% else %}
-  <p>Нет добавленных записей</p>
-{% endfor %}
+</div>
 
+<section class="panel">
+    <h2 class="panel-title">{{ _('Добавить запись') }}</h2>
+    <div class="content-tip-card" style="margin-bottom: 16px;">
+        <p class="content-tip-kicker">{{ _('Как писать сильный опыт') }}</p>
+        <p class="content-tip-copy">{{ _('Не пересказывай обязанности. Лучше покажи масштаб, зону ответственности, что именно улучшил и какой был результат: скорость, выручка, качество, процессы, метрики.') }}</p>
+    </div>
+    <form action="/admin/add" method="post">
+        <div class="field-grid">
+            <div class="field">
+                <label for="company">{{ _('Компания') }}</label>
+                <input id="company" name="company" required>
+            </div>
+            <div class="field">
+                <label for="location">{{ _('Город / страна / формат') }}</label>
+                <input id="location" name="location" placeholder="{{ _('Москва / Удаленно / Берлин, Германия') }}">
+            </div>
+            <div class="field">
+                <label for="role">{{ _('Роль') }}</label>
+                <input id="role" name="role" required>
+            </div>
+            <div class="field">
+                <label>{{ _('Начало') }}</label>
+                <div class="date-select-row">
+                    <select name="start_month" aria-label="{{ _('Месяц начала') }}" required>
+                        <option value="">{{ _('Месяц') }}</option>
+                        {% for value, label in months %}
+                            <option value="{{ value }}">{{ _(label) }}</option>
+                        {% endfor %}
+                    </select>
+                    <select name="start_year" aria-label="{{ _('Год начала') }}" required>
+                        <option value="">{{ _('Год') }}</option>
+                        {% for year in years %}
+                            <option value="{{ year }}">{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="field">
+                <label>{{ _('Конец') }}</label>
+                <div class="date-select-row">
+                    <select name="end_month" id="end_month" aria-label="{{ _('Месяц окончания') }}">
+                        <option value="">{{ _('Месяц') }}</option>
+                        {% for value, label in months %}
+                            <option value="{{ value }}">{{ _(label) }}</option>
+                        {% endfor %}
+                    </select>
+                    <select name="end_year" id="end_year" aria-label="{{ _('Год окончания') }}">
+                        <option value="">{{ _('Год') }}</option>
+                        {% for year in years %}
+                            <option value="{{ year }}">{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="field field-full">
+                <label class="checkbox-row">
+                    <input type="checkbox" name="current" id="current">
+                    {{ _('Работаю здесь в настоящее время') }}
+                </label>
+            </div>
+            <div class="field field-full">
+                <label for="description">{{ _('Описание') }}</label>
+                <textarea id="description" name="description" rows="5" required></textarea>
+                <div class="field-guidance">
+                    <p class="helper">{{ _('Хорошо: “Перезапустил onboarding-поток, сократил drop-off на 18% и уменьшил время активации с 3 дней до 1 дня”.') }}</p>
+                    <p class="helper">{{ _('Слабо: “Занимался задачами команды, участвовал в разработке, взаимодействовал с коллегами”.') }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">{{ _('Добавить опыт') }}</button>
+        </div>
+    </form>
+</section>
+
+<section class="panel">
+    <div class="panel-title-row">
+        <h2 class="panel-title">{{ _('Текущий опыт') }}</h2>
+        <span class="badge badge-neutral">{{ experiences|length }} шт.</span>
+    </div>
+    {% for exp in experiences %}
+        <div class="experience-block">
+            <div class="stack-list-item-head">
+                <div>
+                    <p class="stack-list-item-title">{{ exp.role }}</p>
+                    <p class="stack-list-item-subtitle">{{ exp.company }}{% if exp.location %} · {{ exp.location }}{% endif %} · {{ exp.period }}</p>
+                </div>
+                <div class="btn-group">
+                        <a href="/admin/edit/{{ exp.id }}">{{ _('Редактировать') }}</a>
+                    <form method="post" action="/admin/delete/{{ exp.id }}" onsubmit="return confirm('{{ _('Удалить опыт?') }}')">
+                        <button type="submit" class="link-button">{{ _('Удалить') }}</button>
+                    </form>
+                </div>
+            </div>
+            <p class="stack-list-item-copy">{{ exp.description }}</p>
+        </div>
+    {% else %}
+        <div class="content-empty-card">
+            <p class="content-empty-title">{{ _('Пока нет записей об опыте') }}</p>
+            <p class="content-empty-copy">{{ _('Это главный блок резюме. Начни с последних 2-4 мест работы и опиши не только функции, а конкретный вклад и результат.') }}</p>
+        </div>
+    {% endfor %}
+</section>
 
 <script>
     const checkbox = document.getElementById('current');
-    const endField = document.getElementById('end_month');
+    const endMonthField = document.getElementById('end_month');
+    const endYearField = document.getElementById('end_year');
 
     checkbox.addEventListener('change', () => {
-        endField.disabled = checkbox.checked;
+        endMonthField.disabled = checkbox.checked;
+        endYearField.disabled = checkbox.checked;
     });
 </script>
 {% endblock %}
