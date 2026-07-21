@@ -9,6 +9,6 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./resume.db:/app/resume.db        
-      - ./static/uploads:/app/static/uploads 
+      - ./resume.db:/app/resume.db
+      - ./static/uploads:/app/static/uploads
     restart: unless-stopped
